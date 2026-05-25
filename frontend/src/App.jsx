@@ -1,121 +1,228 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const DATASETS = ['results', 'laps', 'telemetry']
+
+async function fetchOverview() {
+  const res = await fetch('/api/overview')
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `API error ${res.status}`)
+  }
+  return res.json()
+}
+
+async function fetchStaticFallback() {
+  const res = await fetch('/data/overview.json')
+  if (!res.ok) throw new Error('Static sample data not found')
+  return res.json()
+}
+
+function DataTable({ dataset }) {
+  if (!dataset?.columns?.length) {
+    return <p className="muted">No columns in this dataset.</p>
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {dataset.columns.map((col) => (
+              <th key={col.name} title={col.dtype}>
+                {col.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dataset.previewRows.map((row, i) => (
+            <tr key={i}>
+              {dataset.columns.map((col) => (
+                <td key={col.name}>{formatCell(row[col.name])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function formatCell(value) {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function SchemaList({ columns }) {
+  return (
+    <ul className="schema-list">
+      {columns.map((col) => (
+        <li key={col.name}>
+          <span className="schema-name">{col.name}</span>
+          <span className="schema-dtype">{col.dtype}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function App() {
+  const [overview, setOverview] = useState(null)
+  const [activeDataset, setActiveDataset] = useState('results')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [dataSource, setDataSource] = useState(null)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchOverview()
+      setOverview(data)
+      setDataSource('live API')
+    } catch {
+      try {
+        const data = await fetchStaticFallback()
+        setOverview(data)
+        setDataSource('bundled sample (run backend for live data)')
+      } catch (fallbackErr) {
+        setError(
+          fallbackErr.message ||
+            'Could not load data. Start the API with: uvicorn api:app --reload --port 8000',
+        )
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const dataset = overview?.datasets?.[activeDataset]
+  const session = overview?.session
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-bar" aria-hidden="true" />
+        <div className="header-inner">
+          <p className="eyebrow">F1 Race Engineer</p>
+          <h1>Data Explorer</h1>
+          <p className="subtitle">
+            Preview the FastF1 datasets powering this project — race results,
+            lap times, and telemetry.
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      <main className="main">
+        {loading && (
+          <div className="status-card loading-card">
+            <span className="spinner" aria-hidden="true" />
+            <p>Loading session data… first run may take a minute while FastF1 caches.</p>
+          </div>
+        )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {error && !loading && (
+          <div className="status-card error-card" role="alert">
+            <p>{error}</p>
+            <button type="button" onClick={loadData}>
+              Retry
+            </button>
+          </div>
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        {overview && !loading && (
+          <>
+            <section className="session-card">
+              <div>
+                <h2>Session</h2>
+                {session && (
+                  <dl className="session-meta">
+                    <div>
+                      <dt>Event</dt>
+                      <dd>{session.eventName ?? session.location}</dd>
+                    </div>
+                    <div>
+                      <dt>Year</dt>
+                      <dd>{session.year}</dd>
+                    </div>
+                    <div>
+                      <dt>Type</dt>
+                      <dd>{session.sessionType}</dd>
+                    </div>
+                    <div>
+                      <dt>Name</dt>
+                      <dd>{session.name}</dd>
+                    </div>
+                  </dl>
+                )}
+              </div>
+              <div className="session-side">
+                <span className="badge">{dataSource}</span>
+                <button type="button" className="btn-secondary" onClick={loadData}>
+                  Refresh
+                </button>
+              </div>
+            </section>
+
+            <nav className="tabs" aria-label="Datasets">
+              {DATASETS.map((id) => {
+                const ds = overview.datasets[id]
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={activeDataset === id ? 'tab active' : 'tab'}
+                    onClick={() => setActiveDataset(id)}
+                    aria-current={activeDataset === id ? 'page' : undefined}
+                  >
+                    {ds?.title ?? id}
+                    <span className="tab-count">{ds?.rowCount ?? 0} rows</span>
+                  </button>
+                )
+              })}
+            </nav>
+
+            {dataset && (
+              <section className="dataset-panel">
+                <div className="dataset-header">
+                  <div>
+                    <h2>{dataset.title}</h2>
+                    <p className="dataset-desc">{dataset.description}</p>
+                    <code className="source-tag">{dataset.source}</code>
+                  </div>
+                  <p className="row-total">
+                    Showing {dataset.previewRows.length} of{' '}
+                    <strong>{dataset.rowCount}</strong> rows
+                  </p>
+                </div>
+
+                <div className="panel-grid">
+                  <div className="panel-block">
+                    <h3>Schema</h3>
+                    <SchemaList columns={dataset.columns} />
+                  </div>
+                  <div className="panel-block panel-wide">
+                    <h3>Preview</h3>
+                    <DataTable dataset={dataset} />
+                  </div>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </main>
+
+      <footer className="footer">
+        <span>Theme: F1 red / white / black</span>
+        <span>Data via FastF1</span>
+      </footer>
+    </div>
   )
 }
 
