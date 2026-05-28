@@ -242,4 +242,92 @@ function App() {
 
         {overview && !loading && (
           <>
-            <section
+            <section className="session-card">
+              <div>
+                <h2>Active view</h2>
+                <dl className="session-meta">
+                  <div>
+                    <dt>Event</dt>
+                    <dd>{session?.eventName ?? session?.location}</dd>
+                  </div>
+                  <div>
+                    <dt>Session</dt>
+                    <dd>
+                      {session?.year} · {session?.sessionType} · {session?.name}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Driver</dt>
+                    <dd>
+                      {selectedDriverInfo
+                        ? `${selectedDriverInfo.code} — ${selectedDriverInfo.name}`
+                        : driver}
+                    </dd>
+                  </div>
+                  {session?.date && (
+                    <div>
+                      <dt>Date</dt>
+                      <dd>{session.date}</dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            </section>
+
+            <nav className="tabs" aria-label="Datasets">
+              {DATASETS.map((id) => {
+                const ds = overview.datasets[id]
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={activeDataset === id ? 'tab active' : 'tab'}
+                    onClick={() => setActiveDataset(id)}
+                    aria-current={activeDataset === id ? 'page' : undefined}
+                  >
+                    {ds?.title ?? id}
+                    <span className="tab-count">{ds?.rowCount ?? 0} rows</span>
+                  </button>
+                )
+              })}
+            </nav>
+
+            {dataset && (
+              <section className="dataset-panel">
+                <div className="dataset-header">
+                  <div>
+                    <h2>{dataset.title}</h2>
+                    <p className="dataset-desc">{dataset.description}</p>
+                    <code className="source-tag">{dataset.source}</code>
+                  </div>
+                  <p className="row-total">
+                    Showing {dataset.previewRows.length} of{' '}
+                    <strong>{dataset.rowCount}</strong> rows
+                  </p>
+                </div>
+
+                <div className="panel-grid">
+                  <div className="panel-block">
+                    <h3>Schema</h3>
+                    <SchemaList columns={dataset.columns} />
+                  </div>
+                  <div className="panel-block panel-wide">
+                    <h3>Preview</h3>
+                    <DataTable dataset={dataset} />
+                  </div>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </main>
+
+      <footer className="footer">
+        <span>Filter by session and driver</span>
+        <span>Data via FastF1</span>
+      </footer>
+    </div>
+  )
+}
+
+export default App

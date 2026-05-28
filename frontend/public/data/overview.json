@@ -97,4 +97,30 @@
         { "name": "nGear", "dtype": "int64" },
         { "name": "X", "dtype": "float64" },
         { "name": "Y", "dtype": "float64" }
-      
+      ],
+      "rowCount": 682,
+      "previewRows": [
+        {
+          "Time": "0 days 00:00:00",
+          "Speed": 0,
+          "RPM": 10500,
+          "Throttle": 0,
+          "Brake": false,
+          "nGear": 1,
+          "X": 120.5,
+          "Y": 450.2
+        },
+        {
+          "Time": "0 days 00:00:00.100000",
+          "Speed": 42,
+          "RPM": 11200,
+          "Throttle": 85,
+          "Brake": false,
+          "nGear": 2,
+          "X": 122.1,
+          "Y": 451.0
+        }
+      ]
+    }
+  }
+}
