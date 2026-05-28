@@ -1,5 +1,6 @@
 {
   "session": {
+    "id": "2024-monaco-r",
     "year": 2024,
     "location": "Monaco",
     "sessionType": "R",
@@ -7,12 +8,20 @@
     "eventName": "Monaco Grand Prix",
     "date": "2024-05-26 14:00:00"
   },
+  "drivers": [
+    { "code": "LEC", "name": "C LECLERC", "team": "Ferrari" },
+    { "code": "PIA", "name": "P PIASTRI", "team": "McLaren" },
+    { "code": "SAI", "name": "C SAINZ", "team": "Ferrari" },
+    { "code": "NOR", "name": "L NORRIS", "team": "McLaren" },
+    { "code": "VER", "name": "M VERSTAPPEN", "team": "Red Bull Racing" }
+  ],
+  "selectedDriver": "VER",
   "datasets": {
     "results": {
       "id": "results",
-      "title": "Race Results",
-      "description": "Finishing order, grid, points, and driver metadata for the session.",
-      "source": "session.results",
+      "title": "Session Result",
+      "description": "Result row for VER in this session.",
+      "source": "session.results[session.results['Abbreviation'] == 'VER']",
       "columns": [
         { "name": "Position", "dtype": "float64" },
         { "name": "BroadcastName", "dtype": "object" },
@@ -22,18 +31,24 @@
         { "name": "Points", "dtype": "float64" },
         { "name": "Status", "dtype": "object" }
       ],
-      "rowCount": 20,
+      "rowCount": 1,
       "previewRows": [
-        { "Position": 1, "BroadcastName": "C LECLERC", "Abbreviation": "LEC", "TeamName": "Ferrari", "GridPosition": 1, "Points": 25, "Status": "Finished" },
-        { "Position": 2, "BroadcastName": "P PIASTRI", "Abbreviation": "PIA", "TeamName": "McLaren", "GridPosition": 3, "Points": 18, "Status": "Finished" },
-        { "Position": 3, "BroadcastName": "C SAINZ", "Abbreviation": "SAI", "TeamName": "Ferrari", "GridPosition": 4, "Points": 15, "Status": "Finished" }
+        {
+          "Position": 1,
+          "BroadcastName": "M VERSTAPPEN",
+          "Abbreviation": "VER",
+          "TeamName": "Red Bull Racing",
+          "GridPosition": 2,
+          "Points": 25,
+          "Status": "Finished"
+        }
       ]
     },
     "laps": {
       "id": "laps",
       "title": "Lap Times",
-      "description": "Per-lap timing, sectors, compounds, and stint data for all drivers.",
-      "source": "session.laps",
+      "description": "Per-lap data for VER (timing, sectors, compounds).",
+      "source": "session.laps.pick_driver('VER')",
       "columns": [
         { "name": "Driver", "dtype": "object" },
         { "name": "LapNumber", "dtype": "int64" },
@@ -44,16 +59,34 @@
         { "name": "Compound", "dtype": "object" },
         { "name": "TyreLife", "dtype": "float64" }
       ],
-      "rowCount": 1240,
+      "rowCount": 78,
       "previewRows": [
-        { "Driver": "VER", "LapNumber": 1, "LapTime": "0 days 00:01:18.234000", "Sector1Time": "0 days 00:00:26.100000", "Sector2Time": "0 days 00:00:32.400000", "Sector3Time": "0 days 00:00:19.734000", "Compound": "SOFT", "TyreLife": 1 },
-        { "Driver": "VER", "LapNumber": 2, "LapTime": "0 days 00:01:17.891000", "Sector1Time": "0 days 00:00:25.800000", "Sector2Time": "0 days 00:00:32.100000", "Sector3Time": "0 days 00:00:19.991000", "Compound": "SOFT", "TyreLife": 2 }
+        {
+          "Driver": "VER",
+          "LapNumber": 1,
+          "LapTime": "0 days 00:01:18.234000",
+          "Sector1Time": "0 days 00:00:26.100000",
+          "Sector2Time": "0 days 00:00:32.400000",
+          "Sector3Time": "0 days 00:00:19.734000",
+          "Compound": "SOFT",
+          "TyreLife": 1
+        },
+        {
+          "Driver": "VER",
+          "LapNumber": 2,
+          "LapTime": "0 days 00:01:17.891000",
+          "Sector1Time": "0 days 00:00:25.800000",
+          "Sector2Time": "0 days 00:00:32.100000",
+          "Sector3Time": "0 days 00:00:19.991000",
+          "Compound": "SOFT",
+          "TyreLife": 2
+        }
       ]
     },
     "telemetry": {
       "id": "telemetry",
-      "title": "Telemetry (sample)",
-      "description": "Car telemetry sampled from VER's fastest lap (speed, throttle, brake, gear, track position).",
+      "title": "Telemetry",
+      "description": "Car telemetry from VER's fastest lap (speed, throttle, brake, gear, track position).",
       "source": "session.laps.pick_driver('VER').pick_fastest().get_telemetry()",
       "columns": [
         { "name": "Time", "dtype": "timedelta64[ns]" },
@@ -64,12 +97,4 @@
         { "name": "nGear", "dtype": "int64" },
         { "name": "X", "dtype": "float64" },
         { "name": "Y", "dtype": "float64" }
-      ],
-      "rowCount": 682,
-      "previewRows": [
-        { "Time": "0 days 00:00:00", "Speed": 0, "RPM": 10500, "Throttle": 0, "Brake": false, "nGear": 1, "X": 120.5, "Y": 450.2 },
-        { "Time": "0 days 00:00:00.100000", "Speed": 42, "RPM": 11200, "Throttle": 85, "Brake": false, "nGear": 2, "X": 122.1, "Y": 451.0 }
-      ]
-    }
-  }
-}
+      

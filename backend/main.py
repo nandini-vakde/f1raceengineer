@@ -5,11 +5,11 @@ Run the API for the React explorer:
   uvicorn api:app --reload --port 8000
 """
 
-from data_loader import load_session_overview
+from data_loader import load_overview_by_session_id
 
 
 def main() -> None:
-    overview = load_session_overview()
+    overview = load_overview_by_session_id("2024-monaco-r")
     session = overview["session"]
     print(f"Session: {session['name']} ({session['year']} {session['location']} {session['sessionType']})")
     for key, dataset in overview["datasets"].items():

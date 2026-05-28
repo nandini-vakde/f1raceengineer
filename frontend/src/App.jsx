@@ -1,22 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
+import { fetchOverview, fetchSessions } from './api'
+import TelemetryReplay from './TelemetryReplay'
 import './App.css'
 
 const DATASETS = ['results', 'laps', 'telemetry']
-
-async function fetchOverview() {
-  const res = await fetch('/api/overview')
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `API error ${res.status}`)
-  }
-  return res.json()
-}
-
-async function fetchStaticFallback() {
-  const res = await fetch('/data/overview.json')
-  if (!res.ok) throw new Error('Static sample data not found')
-  return res.json()
-}
+const DEFAULT_SESSION_ID = '2024-monaco-r'
 
 function DataTable({ dataset }) {
   if (!dataset?.columns?.length) {
@@ -68,42 +56,91 @@ function SchemaList({ columns }) {
   )
 }
 
+function FilterSelect({ id, label, value, onChange, disabled, children }) {
+  return (
+    <label className="filter-field" htmlFor={id}>
+      <span className="filter-label">{label}</span>
+      <select
+        id={id}
+        className="filter-select"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      >
+        {children}
+      </select>
+    </label>
+  )
+}
+
 function App() {
+  const [sessions, setSessions] = useState([])
+  const [sessionId, setSessionId] = useState(DEFAULT_SESSION_ID)
+  const [driver, setDriver] = useState('')
+  const [drivers, setDrivers] = useState([])
+
   const [overview, setOverview] = useState(null)
   const [activeDataset, setActiveDataset] = useState('results')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [dataSource, setDataSource] = useState(null)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await fetchOverview()
-      setOverview(data)
-      setDataSource('live API')
-    } catch {
-      try {
-        const data = await fetchStaticFallback()
-        setOverview(data)
-        setDataSource('bundled sample (run backend for live data)')
-      } catch (fallbackErr) {
-        setError(
-          fallbackErr.message ||
-            'Could not load data. Start the API with: uvicorn api:app --reload --port 8000',
-        )
-      }
-    } finally {
-      setLoading(false)
-    }
+  useEffect(() => {
+    fetchSessions()
+      .then((data) => {
+        const list = data.sessions ?? []
+        setSessions(list)
+        if (list.length && !list.some((s) => s.id === sessionId)) {
+          setSessionId(list[0].id)
+        }
+      })
+      .catch((err) => setError(err.message))
   }, [])
 
+  const loadOverview = useCallback(
+    async ({ nextSessionId, nextDriver, keepDriver = true }) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const { data, source } = await fetchOverview({
+          sessionId: nextSessionId,
+          driver: keepDriver ? nextDriver || undefined : undefined,
+        })
+        setOverview(data)
+        setDrivers(data.drivers ?? [])
+        setDriver(data.selectedDriver)
+        setDataSource(source)
+      } catch (err) {
+        setError(err.message)
+        setOverview(null)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [],
+  )
+
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    if (!sessionId) return
+    loadOverview({ nextSessionId: sessionId, nextDriver: driver, keepDriver: false })
+  }, [sessionId, loadOverview])
+
+  const handleSessionChange = (nextSessionId) => {
+    setSessionId(nextSessionId)
+  }
+
+  const handleDriverChange = (nextDriver) => {
+    setDriver(nextDriver)
+    loadOverview({
+      nextSessionId: sessionId,
+      nextDriver,
+      keepDriver: true,
+    })
+  }
 
   const dataset = overview?.datasets?.[activeDataset]
   const session = overview?.session
+  const selectedDriverInfo = drivers.find((d) => d.code === driver)
 
   return (
     <div className="app">
@@ -113,13 +150,71 @@ function App() {
           <p className="eyebrow">F1 Race Engineer</p>
           <h1>Data Explorer</h1>
           <p className="subtitle">
-            Preview the FastF1 datasets powering this project — race results,
-            lap times, and telemetry.
+            Filter by session and driver, then replay telemetry as if the session
+            is happening live.
           </p>
         </div>
       </header>
 
       <main className="main">
+        <section className="filters-card" aria-label="Filters">
+          <FilterSelect
+            id="session-select"
+            label="Session / Race"
+            value={sessionId}
+            onChange={handleSessionChange}
+            disabled={loading && !sessions.length}
+          >
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            id="driver-select"
+            label="Driver"
+            value={driver}
+            onChange={handleDriverChange}
+            disabled={!drivers.length || loading}
+          >
+            {drivers.map((d) => (
+              <option key={d.code} value={d.code}>
+                {d.code} — {d.name}
+                {d.team ? ` (${d.team})` : ''}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <div className="filters-meta">
+            {dataSource && <span className="badge">{dataSource}</span>}
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={loading}
+              onClick={() =>
+                loadOverview({
+                  nextSessionId: sessionId,
+                  nextDriver: driver,
+                  keepDriver: true,
+                })
+              }
+            >
+              Refresh
+            </button>
+          </div>
+        </section>
+
+        {driver && !loading && (
+          <TelemetryReplay
+            key={`${sessionId}-${driver}`}
+            sessionId={sessionId}
+            driver={driver}
+            driverInfo={selectedDriverInfo}
+          />
+        )}
+
         {loading && (
           <div className="status-card loading-card">
             <span className="spinner" aria-hidden="true" />
@@ -130,7 +225,16 @@ function App() {
         {error && !loading && (
           <div className="status-card error-card" role="alert">
             <p>{error}</p>
-            <button type="button" onClick={loadData}>
+            <button
+              type="button"
+              onClick={() =>
+                loadOverview({
+                  nextSessionId: sessionId,
+                  nextDriver: driver,
+                  keepDriver: true,
+                })
+              }
+            >
               Retry
             </button>
           </div>
@@ -138,92 +242,4 @@ function App() {
 
         {overview && !loading && (
           <>
-            <section className="session-card">
-              <div>
-                <h2>Session</h2>
-                {session && (
-                  <dl className="session-meta">
-                    <div>
-                      <dt>Event</dt>
-                      <dd>{session.eventName ?? session.location}</dd>
-                    </div>
-                    <div>
-                      <dt>Year</dt>
-                      <dd>{session.year}</dd>
-                    </div>
-                    <div>
-                      <dt>Type</dt>
-                      <dd>{session.sessionType}</dd>
-                    </div>
-                    <div>
-                      <dt>Name</dt>
-                      <dd>{session.name}</dd>
-                    </div>
-                  </dl>
-                )}
-              </div>
-              <div className="session-side">
-                <span className="badge">{dataSource}</span>
-                <button type="button" className="btn-secondary" onClick={loadData}>
-                  Refresh
-                </button>
-              </div>
-            </section>
-
-            <nav className="tabs" aria-label="Datasets">
-              {DATASETS.map((id) => {
-                const ds = overview.datasets[id]
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    className={activeDataset === id ? 'tab active' : 'tab'}
-                    onClick={() => setActiveDataset(id)}
-                    aria-current={activeDataset === id ? 'page' : undefined}
-                  >
-                    {ds?.title ?? id}
-                    <span className="tab-count">{ds?.rowCount ?? 0} rows</span>
-                  </button>
-                )
-              })}
-            </nav>
-
-            {dataset && (
-              <section className="dataset-panel">
-                <div className="dataset-header">
-                  <div>
-                    <h2>{dataset.title}</h2>
-                    <p className="dataset-desc">{dataset.description}</p>
-                    <code className="source-tag">{dataset.source}</code>
-                  </div>
-                  <p className="row-total">
-                    Showing {dataset.previewRows.length} of{' '}
-                    <strong>{dataset.rowCount}</strong> rows
-                  </p>
-                </div>
-
-                <div className="panel-grid">
-                  <div className="panel-block">
-                    <h3>Schema</h3>
-                    <SchemaList columns={dataset.columns} />
-                  </div>
-                  <div className="panel-block panel-wide">
-                    <h3>Preview</h3>
-                    <DataTable dataset={dataset} />
-                  </div>
-                </div>
-              </section>
-            )}
-          </>
-        )}
-      </main>
-
-      <footer className="footer">
-        <span>Theme: F1 red / white / black</span>
-        <span>Data via FastF1</span>
-      </footer>
-    </div>
-  )
-}
-
-export default App
+            <section

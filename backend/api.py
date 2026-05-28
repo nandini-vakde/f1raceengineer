@@ -1,12 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from data_loader import (
-    DEFAULT_LOCATION,
-    DEFAULT_SESSION_TYPE,
-    DEFAULT_YEAR,
-    load_session_overview,
-)
+from data_loader import DEFAULT_SESSION_ID, load_overview_by_session_id
+from sessions_catalog import list_sessions
+from telemetry_replay import load_replay_by_session_id
 
 app = FastAPI(title="F1 Race Engineer API")
 
@@ -24,22 +21,43 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/sessions")
+def sessions() -> dict:
+    return {"sessions": list_sessions()}
+
+
 @app.get("/api/overview")
 def overview(
-    year: int = Query(DEFAULT_YEAR, ge=2018, le=2030),
-    location: str = Query(DEFAULT_LOCATION, min_length=1),
-    session_type: str = Query(DEFAULT_SESSION_TYPE, min_length=1),
+    session_id: str = Query(DEFAULT_SESSION_ID, min_length=1),
+    driver: str | None = Query(None, min_length=1),
     preview_rows: int = Query(25, ge=5, le=100),
 ) -> dict:
     try:
-        return load_session_overview(
-            year=year,
-            location=location,
-            session_type=session_type,
+        return load_overview_by_session_id(
+            session_id=session_id,
+            driver=driver,
             preview_rows=preview_rows,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load session data: {exc}",
+        ) from exc
+
+
+@app.get("/api/telemetry/replay")
+def telemetry_replay(
+    session_id: str = Query(DEFAULT_SESSION_ID, min_length=1),
+    driver: str | None = Query(None, min_length=1),
+) -> dict:
+    try:
+        return load_replay_by_session_id(session_id=session_id, driver=driver)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to build telemetry replay: {exc}",
         ) from exc
