@@ -1,0 +1,13 @@
+# env file
+backend/.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# FastF1 cache
+backend/f1_cache/
+
+# macOS
+.DS_Store
