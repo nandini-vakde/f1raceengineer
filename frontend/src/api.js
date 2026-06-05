@@ -24,7 +24,7 @@ export async function fetchOverview({ sessionId, driver }) {
       const body = await res.json().catch(() => ({}))
       throw new Error(body.detail || `API error ${res.status}`)
     }
-    return { data: await res.json(), source: 'live API' }
+    return { data: await res.json(), source: 'OpenF1 (live API)' }
   } catch (apiErr) {
     const res = await fetch(STATIC_OVERVIEW)
     if (!res.ok) throw apiErr
@@ -112,6 +112,4 @@ function filterStaticOverview(data, driverCode) {
         ...data.datasets.telemetry,
         description: `Telemetry sample labelled for ${driver.name} (${driverCode}).`,
       },
-    },
-  }
-}
+    

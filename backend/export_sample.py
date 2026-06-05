@@ -1,10 +1,10 @@
-"""Export static JSON snapshots for offline frontend preview."""
+"""Export static JSON snapshots for offline frontend preview (from OpenF1)."""
 
 import json
 from pathlib import Path
 
 from data_loader import load_overview_by_session_id
-from sessions_catalog import list_sessions
+from openf1_sessions import list_sessions_catalog
 from telemetry_replay import load_replay_by_session_id
 
 ROOT = Path(__file__).resolve().parent.parent / "frontend" / "public" / "data"
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent / "frontend" / "public" / "data"
 def main() -> None:
     overview = load_overview_by_session_id("2024-monaco-r")
     replay = load_replay_by_session_id("2024-monaco-r")
-    sessions = {"sessions": list_sessions()}
+    sessions = {"sessions": list_sessions_catalog()}
 
     ROOT.mkdir(parents=True, exist_ok=True)
     (ROOT / "overview.json").write_text(json.dumps(overview, indent=2), encoding="utf-8")

@@ -1,19 +1,20 @@
-"""Build full-session telemetry timeline for live replay."""
+"""Build full-session telemetry timeline from OpenF1 car_data + location."""
 
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from data_loader import DEFAULT_DRIVER, _pick_driver, extract_drivers
-from session_cache import get_loaded_session
-from sessions_catalog import get_session_by_id
+from config import CACHE_DIR
+from data_loader import DEFAULT_DRIVER, _driver_number_for_code, _drivers_for_session
+from openf1_client import fetch
+from openf1_sessions import get_session_by_id
 
-CACHE_DIR = Path(__file__).resolve().parent / "f1_cache"
-REPLAY_CACHE_DIR = CACHE_DIR / "replays"
+REPLAY_CACHE_DIR = Path(CACHE_DIR) / "replays"
 MAX_POINTS = 12_000
 
 
@@ -22,11 +23,12 @@ def _replay_cache_path(session_id: str, driver: str) -> Path:
     return REPLAY_CACHE_DIR / f"{safe}.json"
 
 
-def _driver_number(results: pd.DataFrame, abbreviation: str) -> str:
-    rows = results.loc[results["Abbreviation"] == abbreviation, "DriverNumber"]
-    if rows.empty:
-        raise ValueError(f"Driver {abbreviation} not found in session results")
-    return str(int(rows.iloc[0]))
+def _to_session_seconds(date_str: str, session_start: datetime) -> float:
+    dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    start = session_start if session_start.tzinfo else session_start.replace(tzinfo=timezone.utc)
+    return (dt - start).total_seconds()
 
 
 def _series_to_points(
@@ -45,15 +47,15 @@ def _series_to_points(
         points.append(
             {
                 "t": round(float(row.t), 3),
-                "lap": int(row.LapNumber) if pd.notna(row.LapNumber) else None,
-                "speed": None if pd.isna(row.Speed) else float(row.Speed),
-                "rpm": None if pd.isna(row.RPM) else float(row.RPM),
-                "throttle": None if pd.isna(row.Throttle) else float(row.Throttle),
-                "brake": bool(row.Brake) if not pd.isna(row.Brake) else False,
-                "gear": None if pd.isna(row.nGear) else int(row.nGear),
-                "x": None if pd.isna(row.X) else float(row.X),
-                "y": None if pd.isna(row.Y) else float(row.Y),
-                "drs": None if pd.isna(row.DRS) else int(row.DRS),
+                "lap": int(row.lap) if pd.notna(getattr(row, "lap", None)) else None,
+                "speed": None if pd.isna(row.speed) else float(row.speed),
+                "rpm": None if pd.isna(row.rpm) else float(row.rpm),
+                "throttle": None if pd.isna(row.throttle) else float(row.throttle),
+                "brake": bool(row.brake) if not pd.isna(row.brake) else False,
+                "gear": None if pd.isna(row.gear) else int(row.gear),
+                "x": None if pd.isna(row.x) else float(row.x),
+                "y": None if pd.isna(row.y) else float(row.y),
+                "drs": None if pd.isna(row.drs) else int(row.drs),
             }
         )
 
@@ -79,101 +81,75 @@ def _series_to_points(
 
 
 def build_driver_replay(
+    session_key: int,
     year: int,
     location: str,
     session_type: str,
+    session_name: str,
+    date_start: str | None,
     driver: str | None = None,
 ) -> dict:
-    session = get_loaded_session(year, location, session_type)
-
-    results = session.results
-    laps = session.laps
-    selected = _pick_driver(results, laps, driver)
-    driver_info = next((d for d in extract_drivers(results) if d["code"] == selected), None)
-    driver_number = _driver_number(results, selected)
-
-    car = session.car_data[driver_number].copy()
-    pos = session.pos_data[driver_number].copy()
-    driver_laps = laps.pick_drivers(selected)
-
-    car["t"] = car["SessionTime"].dt.total_seconds()
-    pos["t"] = pos["SessionTime"].dt.total_seconds()
-
-    car = car.sort_values("t").dropna(subset=["t"])
-    pos = pos.sort_values("t").dropna(subset=["t", "X", "Y"])
-
-    merged = pd.merge_asof(
-        car,
-        pos[["t", "X", "Y"]],
-        on="t",
-        direction="nearest",
-        tolerance=0.15,
+    drivers = _drivers_for_session(session_key)
+    driver_number = _driver_number_for_code(drivers, driver)
+    selected = next(d["code"] for d in drivers if d["driver_number"] == driver_number)
+    driver_info = next(
+        ({"code": d["code"], "name": d["name"], "team": d["team"]} for d in drivers if d["code"] == selected),
+        None,
     )
 
-    lap_times = driver_laps[["LapNumber", "LapStartTime"]].dropna().copy()
-    lap_times["t"] = lap_times["LapStartTime"].dt.total_seconds()
-    lap_times = lap_times.sort_values("t")
+    if not date_start:
+        sessions = fetch("sessions", session_key=session_key)
+        date_start = sessions[0]["date_start"] if sessions else None
+    if not date_start:
+        raise ValueError("Session has no date_start in OpenF1")
 
-    merged = pd.merge_asof(
-        merged,
-        lap_times.rename(columns={"LapNumber": "LapNumber"}),
-        on="t",
-        direction="backward",
-    )
+    session_start = datetime.fromisoformat(date_start.replace("Z", "+00:00"))
 
-    if len(merged) > MAX_POINTS:
-        idx = np.linspace(0, len(merged) - 1, MAX_POINTS, dtype=int)
-        merged = merged.iloc[idx]
+    car_rows = fetch("car_data", session_key=session_key, driver_number=driver_number)
+    loc_rows = fetch("location", session_key=session_key, driver_number=driver_number)
+    if not car_rows:
+        raise ValueError(f"No car_data for driver {selected} in session {session_key}")
 
-    lap_markers = [
-        {"lap": int(row.LapNumber), "t": round(float(row.t), 3)}
-        for row in lap_times.itertuples(index=False)
-    ]
-    total_laps = (
-        int(driver_laps["LapNumber"].max())
-        if driver_laps["LapNumber"].notna().any()
-        else len(lap_markers)
-    )
+    car_df = pd.DataFrame(car_rows)
+    car_df["t"] = car_df["date"].apply(lambda d: _to_session_seconds(d, session_start))
+    car_df = car_df.sort_values("t").dropna(subset=["t"])
+    car_df["brake"] = car_df["brake"].astype(bool)
 
-    session_meta = {
-        "year": year,
-        "location": location,
-        "sessionType": session_type,
-        "name": session.name,
-        "eventName": getattr(session.event, "EventName", location),
-    }
+    if loc_rows:
+        loc_df = pd.DataFrame(loc_rows)
+        loc_df["t"] = loc_df["date"].apply(lambda d: _to_session_seconds(d, session_start))
+        loc_df = loc_df.sort_values("t").dropna(subset=["t", "x", "y"])
+        merged = pd.merge_asof(
+            car_df,
+            loc_df[["t", "x", "y"]],
+            on="t",
+            direction="nearest",
+            tolerance=0.15,
+        )
+    else:
+        merged = car_df.copy()
+        merged["x"] = np.nan
+        merged["y"] = np.nan
 
-    return _series_to_points(
-        merged,
-        lap_markers,
-        total_laps,
-        session_meta,
-        selected,
-        driver_info,
-    )
-
-
-def load_replay_by_session_id(session_id: str, driver: str | None = None) -> dict:
-    entry = get_session_by_id(session_id)
-    if entry is None:
-        raise ValueError(f"Unknown session id: {session_id}")
-
-    selected = driver or DEFAULT_DRIVER
-    cache_path = _replay_cache_path(session_id, selected)
-    if cache_path.exists():
-        payload = json.loads(cache_path.read_text(encoding="utf-8"))
-        payload["session"]["id"] = session_id
-        return payload
-
-    payload = build_driver_replay(
-        year=entry["year"],
-        location=entry["location"],
-        session_type=entry["sessionType"],
-        driver=selected,
-    )
-    payload["session"]["id"] = session_id
-
-    REPLAY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(json.dumps(payload), encoding="utf-8")
-
-    return payload
+    lap_rows = fetch("laps", session_key=session_key, driver_number=driver_number)
+    lap_markers: list[dict] = []
+    laps_df = pd.DataFrame()
+    if lap_rows:
+        laps_df = pd.DataFrame(lap_rows).sort_values("lap_number")
+        for row in laps_df.itertuples(index=False):
+            if row.date_start:
+                lap_markers.append(
+                    {
+                        "lap": int(row.lap_number),
+                        "t": round(_to_session_seconds(row.date_start, session_start), 3),
+                    }
+                )
+        lap_lookup = laps_df[["lap_number", "date_start"]].dropna(subset=["date_start"]).copy()
+        lap_lookup["t"] = lap_lookup["date_start"].apply(
+            lambda d: _to_session_seconds(d, session_start)
+        )
+        merged = pd.merge_asof(
+            merged,
+            lap_lookup[["t", "lap_number"]].rename(columns={"lap_number": "lap"}),
+            on="t",
+      

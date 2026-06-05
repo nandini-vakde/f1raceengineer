@@ -1,115 +1,185 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pandas as pd
 
+from openf1_client import fetch
+from openf1_sessions import SESSION_TYPE_TO_NAME, get_session_by_id
 from serialize import dataframe_preview
-from session_cache import get_loaded_session
-from sessions_catalog import get_session_by_id
 
-CACHE_DIR = Path(__file__).resolve().parent / "f1_cache"
 DEFAULT_SESSION_ID = "2024-monaco-r"
 DEFAULT_DRIVER = "VER"
 
 
-def _ensure_cache() -> None:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    fastf1.Cache.enable_cache(str(CACHE_DIR))
-
-
-def extract_drivers(results: pd.DataFrame) -> list[dict]:
-    code_col = "Abbreviation" if "Abbreviation" in results.columns else None
-    if code_col is None:
-        return []
-
-    drivers: list[dict] = []
-    seen: set[str] = set()
-    for _, row in results.iterrows():
-        code = row.get(code_col)
-        if pd.isna(code) or code in seen:
-            continue
-        seen.add(code)
-        drivers.append(
-            {
-                "code": str(code),
-                "name": str(row.get("BroadcastName") or row.get("FullName") or code),
-                "team": str(row.get("TeamName") or ""),
-            }
-        )
+def _drivers_for_session(session_key: int) -> list[dict]:
+    rows = fetch("drivers", session_key=session_key)
+    drivers = [
+        {
+            "code": row["name_acronym"],
+            "name": row.get("broadcast_name") or row.get("full_name") or row["name_acronym"],
+            "team": row.get("team_name") or "",
+            "driver_number": row["driver_number"],
+        }
+        for row in rows
+        if row.get("name_acronym")
+    ]
     drivers.sort(key=lambda d: d["name"])
     return drivers
 
 
-def _pick_driver(results: pd.DataFrame, laps: pd.DataFrame, driver: str | None) -> str:
-    drivers = extract_drivers(results)
-    codes = [d["code"] for d in drivers]
-    if driver and driver in codes:
-        return driver
+def _driver_number_for_code(drivers: list[dict], code: str | None) -> int:
+    codes = {d["code"]: d["driver_number"] for d in drivers}
+    if code and code in codes:
+        return int(codes[code])
     if DEFAULT_DRIVER in codes:
-        return DEFAULT_DRIVER
-    if codes:
-        return codes[0]
+        return int(codes[DEFAULT_DRIVER])
+    if drivers:
+        return int(drivers[0]["driver_number"])
     raise ValueError("No drivers found for this session")
 
 
+def _build_results_df(session_key: int, drivers: list[dict]) -> pd.DataFrame:
+    by_number = {d["driver_number"]: d for d in drivers}
+    results = fetch("session_result", session_key=session_key)
+    rows = []
+    for r in results:
+        dn = r.get("driver_number")
+        info = by_number.get(dn, {})
+        rows.append(
+            {
+                "Position": r.get("position"),
+                "BroadcastName": info.get("name"),
+                "Abbreviation": info.get("code"),
+                "TeamName": info.get("team"),
+                "DriverNumber": dn,
+                "Points": r.get("points"),
+                "NumberOfLaps": r.get("number_of_laps"),
+                "GapToLeader": r.get("gap_to_leader"),
+                "DNF": r.get("dnf"),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _build_laps_df(session_key: int, driver_number: int) -> pd.DataFrame:
+    laps = fetch("laps", session_key=session_key, driver_number=driver_number)
+    rows = []
+    for lap in laps:
+        rows.append(
+            {
+                "Driver": lap.get("driver_number"),
+                "LapNumber": lap.get("lap_number"),
+                "LapTime": lap.get("lap_duration"),
+                "Sector1Time": lap.get("duration_sector_1"),
+                "Sector2Time": lap.get("duration_sector_2"),
+                "Sector3Time": lap.get("duration_sector_3"),
+                "Compound": lap.get("compound"),
+                "TyreLife": lap.get("tyre_life"),
+                "IsPitOutLap": lap.get("is_pit_out_lap"),
+                "DateStart": lap.get("date_start"),
+            }
+        )
+    df = pd.DataFrame(rows)
+    if not df.empty and "LapNumber" in df.columns:
+        df = df.sort_values("LapNumber")
+    return df
+
+
+def _telemetry_sample_df(session_key: int, driver_number: int, limit: int = 25) -> pd.DataFrame:
+    car = fetch("car_data", session_key=session_key, driver_number=driver_number)
+    loc = fetch("location", session_key=session_key, driver_number=driver_number)
+    if not car:
+        return pd.DataFrame()
+
+    car_df = pd.DataFrame(car).head(limit * 4)
+    if loc:
+        loc_df = pd.DataFrame(loc)
+        car_df = car_df.merge(
+            loc_df[["date", "x", "y"]],
+            on="date",
+            how="left",
+        )
+    car_df = car_df.rename(
+        columns={
+            "speed": "Speed",
+            "rpm": "RPM",
+            "throttle": "Throttle",
+            "brake": "Brake",
+            "n_gear": "nGear",
+            "x": "X",
+            "y": "Y",
+            "drs": "DRS",
+            "date": "Time",
+        }
+    )
+    return car_df.head(limit)
+
+
+def extract_drivers_from_list(drivers: list[dict]) -> list[dict]:
+    return [{"code": d["code"], "name": d["name"], "team": d["team"]} for d in drivers]
+
+
 def load_session_overview(
+    session_key: int,
     year: int,
     location: str,
     session_type: str,
+    session_name: str,
+    date_start: str | None,
     driver: str | None = None,
     preview_rows: int = 25,
 ) -> dict:
-    session = get_loaded_session(year, location, session_type)
+    drivers = _drivers_for_session(session_key)
+    selected_code = None
+    if driver:
+        match = next((d for d in drivers if d["code"] == driver), None)
+        selected_code = match["code"] if match else driver
+    driver_number = _driver_number_for_code(drivers, selected_code)
+    selected_driver = next(d["code"] for d in drivers if d["driver_number"] == driver_number)
 
-    results = session.results
-    laps = session.laps
-    selected_driver = _pick_driver(results, laps, driver)
-    drivers = extract_drivers(results)
-
-    driver_results = results[results["Abbreviation"] == selected_driver]
-    driver_laps = laps.pick_drivers(selected_driver)
-    fastest = driver_laps.pick_fastest()
-    telemetry = fastest.get_telemetry()
+    results_df = _build_results_df(session_key, drivers)
+    driver_results = results_df[results_df["Abbreviation"] == selected_driver]
+    laps_df = _build_laps_df(session_key, driver_number)
+    telemetry_df = _telemetry_sample_df(session_key, driver_number, preview_rows)
 
     return {
         "session": {
             "year": year,
             "location": location,
             "sessionType": session_type,
-            "name": session.name,
-            "eventName": getattr(session.event, "EventName", location),
-            "date": str(session.date) if session.date is not None else None,
+            "name": session_name,
+            "eventName": location,
+            "date": date_start,
+            "session_key": session_key,
         },
-        "drivers": drivers,
+        "drivers": extract_drivers_from_list(drivers),
         "selectedDriver": selected_driver,
         "datasets": {
             "results": {
                 "id": "results",
                 "title": "Session Result",
-                "description": f"Result row for {selected_driver} in this session.",
-                "source": f"session.results[session.results['Abbreviation'] == '{selected_driver}']",
+                "description": f"Result row for {selected_driver} (OpenF1 session_result).",
+                "source": f"GET /v1/session_result?session_key={session_key}",
                 **dataframe_preview(driver_results, preview_rows),
             },
             "laps": {
                 "id": "laps",
                 "title": "Lap Times",
-                "description": f"Per-lap data for {selected_driver} (timing, sectors, compounds).",
-                "source": f"session.laps.pick_drivers('{selected_driver}')",
-                **dataframe_preview(driver_laps, preview_rows),
+                "description": f"Per-lap data for {selected_driver} from OpenF1 /v1/laps.",
+                "source": f"GET /v1/laps?session_key={session_key}&driver_number={driver_number}",
+                **dataframe_preview(laps_df, preview_rows),
             },
             "telemetry": {
                 "id": "telemetry",
                 "title": "Telemetry",
                 "description": (
-                    f"Car telemetry from {selected_driver}'s fastest lap "
-                    "(speed, throttle, brake, gear, track position)."
+                    f"Car + location samples for {selected_driver} "
+                    "(OpenF1 car_data + location)."
                 ),
                 "source": (
-                    f"session.laps.pick_drivers('{selected_driver}')"
-                    ".pick_fastest().get_telemetry()"
+                    f"GET /v1/car_data + /v1/location "
+                    f"?session_key={session_key}&driver_number={driver_number}"
                 ),
-                **dataframe_preview(telemetry, preview_rows),
+                **dataframe_preview(telemetry_df, preview_rows),
             },
         },
     }
@@ -123,10 +193,14 @@ def load_overview_by_session_id(
     entry = get_session_by_id(session_id)
     if entry is None:
         raise ValueError(f"Unknown session id: {session_id}")
+
     overview = load_session_overview(
+        session_key=int(entry["session_key"]),
         year=entry["year"],
         location=entry["location"],
         session_type=entry["sessionType"],
+        session_name=entry.get("session_name") or SESSION_TYPE_TO_NAME.get(entry["sessionType"], "Session"),
+        date_start=entry.get("date_start"),
         driver=driver,
         preview_rows=preview_rows,
     )

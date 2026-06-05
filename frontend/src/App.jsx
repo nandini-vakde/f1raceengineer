@@ -324,7 +324,7 @@ function App() {
 
       <footer className="footer">
         <span>Filter by session and driver</span>
-        <span>Data via FastF1</span>
+        <span>Data via OpenF1</span>
       </footer>
     </div>
   )

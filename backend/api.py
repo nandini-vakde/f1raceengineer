@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from config import OPENF1_BASE_URL
 from data_loader import DEFAULT_SESSION_ID, load_overview_by_session_id
+from openf1_client import OpenF1Error
 from sessions_catalog import list_sessions
 from telemetry_replay import load_replay_by_session_id
 
@@ -18,7 +20,7 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "dataSource": "openf1", "openf1BaseUrl": OPENF1_BASE_URL}
 
 
 @app.get("/api/sessions")
@@ -40,6 +42,8 @@ def overview(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OpenF1Error as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -56,6 +60,8 @@ def telemetry_replay(
         return load_replay_by_session_id(session_id=session_id, driver=driver)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OpenF1Error as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=500,
