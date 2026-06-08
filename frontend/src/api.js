@@ -112,4 +112,6 @@ function filterStaticOverview(data, driverCode) {
         ...data.datasets.telemetry,
         description: `Telemetry sample labelled for ${driver.name} (${driverCode}).`,
       },
-    
+    },
+  }
+}

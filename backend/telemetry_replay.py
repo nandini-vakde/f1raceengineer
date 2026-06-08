@@ -152,4 +152,75 @@ def build_driver_replay(
             merged,
             lap_lookup[["t", "lap_number"]].rename(columns={"lap_number": "lap"}),
             on="t",
-      
+            direction="backward",
+        )
+    else:
+        merged["lap"] = None
+
+    if len(merged) > MAX_POINTS:
+        idx = np.linspace(0, len(merged) - 1, MAX_POINTS, dtype=int)
+        merged = merged.iloc[idx]
+
+    total_laps = (
+        int(laps_df["lap_number"].max())
+        if not laps_df.empty and "lap_number" in laps_df.columns
+        else len(lap_markers)
+    )
+
+    session_meta = {
+        "year": year,
+        "location": location,
+        "sessionType": session_type,
+        "name": session_name,
+        "eventName": location,
+        "session_key": session_key,
+    }
+
+    replay_df = merged.rename(
+        columns={
+            "speed": "speed",
+            "rpm": "rpm",
+            "throttle": "throttle",
+            "brake": "brake",
+            "n_gear": "gear",
+            "drs": "drs",
+        }
+    )
+
+    return _series_to_points(
+        replay_df,
+        lap_markers,
+        total_laps,
+        session_meta,
+        selected,
+        driver_info,
+    )
+
+
+def load_replay_by_session_id(session_id: str, driver: str | None = None) -> dict:
+    entry = get_session_by_id(session_id)
+    if entry is None:
+        raise ValueError(f"Unknown session id: {session_id}")
+
+    selected = driver or DEFAULT_DRIVER
+    cache_path = _replay_cache_path(session_id, selected)
+    if cache_path.exists():
+        payload = json.loads(cache_path.read_text(encoding="utf-8"))
+        payload["session"]["id"] = session_id
+        return payload
+
+    payload = build_driver_replay(
+        session_key=int(entry["session_key"]),
+        year=entry["year"],
+        location=entry["location"],
+        session_type=entry["sessionType"],
+        session_name=entry.get("session_name", "Race"),
+        date_start=entry.get("date_start"),
+        driver=selected,
+    )
+    payload["session"]["id"] = session_id
+
+    REPLAY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    return payload
