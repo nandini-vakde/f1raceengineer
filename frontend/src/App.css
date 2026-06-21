@@ -721,3 +721,90 @@ button {
   transform: translateX(-50%);
   opacity: 0.35;
 }
+
+/* AI ENGINEER PANEL */
+
+.engineer-panel {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.engineer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+
+  background: var(--black);
+  color: var(--white);
+}
+
+.engineer-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.engineer-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #5cff85;
+}
+
+.engineer-feed {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.engineer-message {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.engineer-message:last-child {
+  border-bottom: none;
+}
+
+.engineer-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.engineer-time {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-family: var(--mono);
+}
+
+.engineer-tag {
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.engineer-tag--info {
+  background: rgba(0, 128, 255, 0.12);
+}
+
+.engineer-tag--warning {
+  background: rgba(255, 166, 0, 0.12);
+}
+
+.engineer-tag--coach {
+  background: rgba(0, 200, 120, 0.12);
+}
+
+.engineer-tag--strategy {
+  background: rgba(225, 6, 0, 0.12);
+}
+
+.engineer-message p {
+  margin: 0;
+  line-height: 1.5;
+}

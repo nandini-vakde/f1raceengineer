@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { fetchOverview, fetchSessions } from './api'
 import TelemetryReplay from './TelemetryReplay'
 import './App.css'
+import AIEngineerPanel from './AIEngineerPanel'
 
 const DATASETS = ['results', 'laps', 'telemetry']
 const DEFAULT_SESSION_ID = '2024-monaco-r'
@@ -207,12 +208,16 @@ function App() {
         </section>
 
         {driver && !loading && (
-          <TelemetryReplay
-            key={`${sessionId}-${driver}`}
-            sessionId={sessionId}
-            driver={driver}
-            driverInfo={selectedDriverInfo}
-          />
+          <>
+            <TelemetryReplay
+              key={`${sessionId}-${driver}`}
+              sessionId={sessionId}
+              driver={driver}
+              driverInfo={selectedDriverInfo}
+            />
+
+            <AIEngineerPanel />
+          </>
         )}
 
         {loading && (
