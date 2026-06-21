@@ -7,6 +7,10 @@ from openf1_client import OpenF1Error
 from sessions_catalog import list_sessions
 from telemetry_replay import load_replay_by_session_id
 
+from ai.engineer import RaceEngineer
+
+engineer = RaceEngineer()
+
 app = FastAPI(title="F1 Race Engineer API")
 
 app.add_middleware(
@@ -67,3 +71,19 @@ def telemetry_replay(
             status_code=500,
             detail=f"Failed to build telemetry replay: {exc}",
         ) from exc
+
+@app.get("/api/engineer")
+def engineer_message(
+    session_id: str,
+    point_index: int
+):
+
+    replay = load_replay_by_session_id(session_id)
+
+    point = replay["points"][point_index]
+
+    message = engineer.process(point)
+
+    return {
+        "message": message
+    }
