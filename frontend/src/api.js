@@ -1,12 +1,16 @@
 const STATIC_OVERVIEW = '/data/overview.json'
 const STATIC_SESSIONS = '/data/sessions.json'
 const STATIC_REPLAY = '/data/replay.json'
+const STATIC_RACE_SIM = '/data/race_simulation.json'
+const DEFAULT_RACE_SESSION_ID = '2024-monaco-r'
 
 export async function fetchSessions() {
   try {
     const res = await fetch('/api/sessions')
     if (!res.ok) throw new Error('sessions unavailable')
-    return res.json()
+    const data = await res.json()
+    if (!data.sessions?.length) throw new Error('empty session list')
+    return data
   } catch {
     const res = await fetch(STATIC_SESSIONS)
     if (!res.ok) throw new Error('Session list not found')
@@ -48,6 +52,43 @@ async function isApiReachable() {
     return res.ok
   } catch {
     return false
+  }
+}
+
+export async function fetchRaceSimulation({ sessionId }) {
+  const params = new URLSearchParams({ session_id: sessionId })
+  const apiUp = await isApiReachable()
+
+  if (apiUp) {
+    const res = await fetch(`/api/race/simulation?${params}`)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      const detail = body.detail || `API error ${res.status}`
+      throw new Error(
+        typeof detail === 'string'
+          ? detail
+          : 'Failed to load race simulation. Try again in a moment.',
+      )
+    }
+    return { data: await res.json(), source: 'Race simulation (live API)', isDemo: false }
+  }
+
+  if (sessionId !== DEFAULT_RACE_SESSION_ID) {
+    throw new Error(
+      'Race simulation requires the backend for this session. Run: cd backend && ./run.sh',
+    )
+  }
+
+  const res = await fetch(STATIC_RACE_SIM)
+  if (!res.ok) {
+    throw new Error(
+      'Race simulation requires the backend. Run: cd backend && ./run.sh',
+    )
+  }
+  return {
+    data: await res.json(),
+    source: 'Demo simulation (first laps only)',
+    isDemo: true,
   }
 }
 

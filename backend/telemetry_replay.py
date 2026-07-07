@@ -16,11 +16,12 @@ from openf1_sessions import get_session_by_id
 
 REPLAY_CACHE_DIR = Path(CACHE_DIR) / "replays"
 MAX_POINTS = 12_000
+REPLAY_SCHEMA_VERSION = 2
 
 
 def _replay_cache_path(session_id: str, driver: str) -> Path:
     safe = f"{session_id}_{driver}".replace("/", "-")
-    return REPLAY_CACHE_DIR / f"{safe}.json"
+    return REPLAY_CACHE_DIR / f"{safe}_v{REPLAY_SCHEMA_VERSION}.json"
 
 
 def _to_session_seconds(date_str: str, session_start: datetime) -> float:
@@ -31,6 +32,43 @@ def _to_session_seconds(date_str: str, session_start: datetime) -> float:
     return (dt - start).total_seconds()
 
 
+def _build_track_outline(loc_df: pd.DataFrame, limit: int = 3_000) -> list[dict]:
+    if loc_df.empty:
+        return []
+    outline = loc_df.dropna(subset=["x", "y"]).copy()
+    outline = outline[(outline["x"].abs() > 1) | (outline["y"].abs() > 1)]
+    if outline.empty:
+        return []
+    if len(outline) > limit:
+        idx = np.linspace(0, len(outline) - 1, limit, dtype=int)
+        outline = outline.iloc[idx]
+    return [{"x": float(row.x), "y": float(row.y)} for row in outline.itertuples(index=False)]
+
+
+def _trim_to_race_start(
+    merged: pd.DataFrame,
+    lap_markers: list[dict],
+) -> tuple[pd.DataFrame, list[dict]]:
+    if merged.empty:
+        return merged, lap_markers
+    if lap_markers:
+        race_start = float(lap_markers[0]["t"]) - 5.0
+    else:
+        moving = merged[(merged["speed"].fillna(0) > 20) & merged["x"].notna()]
+        race_start = float(moving["t"].iloc[0]) if not moving.empty else float(merged["t"].iloc[0])
+    trimmed = merged[merged["t"] >= race_start].copy()
+    if trimmed.empty:
+        return merged, lap_markers
+    t0 = float(trimmed["t"].iloc[0])
+    trimmed["t"] = trimmed["t"] - t0
+    rebased_markers = [
+        {"lap": marker["lap"], "t": round(float(marker["t"]) - t0, 3)}
+        for marker in lap_markers
+        if float(marker["t"]) >= race_start
+    ]
+    return trimmed, rebased_markers
+
+
 def _series_to_points(
     df: pd.DataFrame,
     lap_markers: list[dict],
@@ -38,6 +76,7 @@ def _series_to_points(
     session_meta: dict,
     selected: str,
     driver_info: dict | None,
+    track_outline: list[dict] | None = None,
 ) -> dict:
     if df.empty:
         raise ValueError(f"No telemetry available for driver {selected}")
@@ -61,6 +100,9 @@ def _series_to_points(
 
     xs = [p["x"] for p in points if p["x"] is not None]
     ys = [p["y"] for p in points if p["y"] is not None]
+    if not xs and track_outline:
+        xs = [p["x"] for p in track_outline]
+        ys = [p["y"] for p in track_outline]
     bounds = (
         {"minX": min(xs), "maxX": max(xs), "minY": min(ys), "maxY": max(ys)}
         if xs and ys
@@ -71,11 +113,13 @@ def _series_to_points(
         "session": session_meta,
         "driver": selected,
         "driverInfo": driver_info,
+        "schemaVersion": REPLAY_SCHEMA_VERSION,
         "totalSeconds": round(float(df["t"].iloc[-1]), 3),
         "totalLaps": total_laps,
         "pointCount": len(points),
         "lapMarkers": lap_markers,
         "bounds": bounds,
+        "trackOutline": track_outline or [],
         "points": points,
     }
 
@@ -119,17 +163,19 @@ def build_driver_replay(
         loc_df = pd.DataFrame(loc_rows)
         loc_df["t"] = loc_df["date"].apply(lambda d: _to_session_seconds(d, session_start))
         loc_df = loc_df.sort_values("t").dropna(subset=["t", "x", "y"])
+        track_outline = _build_track_outline(loc_df)
         merged = pd.merge_asof(
-            car_df,
+            car_df.sort_values("t"),
             loc_df[["t", "x", "y"]],
             on="t",
             direction="nearest",
-            tolerance=0.15,
+            tolerance=0.5,
         )
     else:
         merged = car_df.copy()
         merged["x"] = np.nan
         merged["y"] = np.nan
+        track_outline = []
 
     lap_rows = fetch("laps", session_key=session_key, driver_number=driver_number)
     lap_markers: list[dict] = []
@@ -156,6 +202,8 @@ def build_driver_replay(
         )
     else:
         merged["lap"] = None
+
+    merged, lap_markers = _trim_to_race_start(merged, lap_markers)
 
     if len(merged) > MAX_POINTS:
         idx = np.linspace(0, len(merged) - 1, MAX_POINTS, dtype=int)
@@ -194,6 +242,7 @@ def build_driver_replay(
         session_meta,
         selected,
         driver_info,
+        track_outline=track_outline,
     )
 
 

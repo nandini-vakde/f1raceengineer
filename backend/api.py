@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import OPENF1_BASE_URL
 from data_loader import DEFAULT_SESSION_ID, load_overview_by_session_id
 from openf1_client import OpenF1Error
-from sessions_catalog import list_sessions
+from race_simulation import DEFAULT_RACE_SESSION_ID, load_race_simulation_by_session_id
 from telemetry_replay import load_replay_by_session_id
 
 app = FastAPI(title="F1 Race Engineer API")
@@ -25,7 +25,13 @@ def health() -> dict[str, str]:
 
 @app.get("/api/sessions")
 def sessions() -> dict:
-    return {"sessions": list_sessions()}
+    from openf1_sessions import _list_sessions_catalog_cached, list_sessions_catalog
+
+    catalog = list_sessions_catalog()
+    if not catalog:
+        _list_sessions_catalog_cached.cache_clear()
+        catalog = list_sessions_catalog()
+    return {"sessions": catalog}
 
 
 @app.get("/api/overview")
@@ -48,6 +54,23 @@ def overview(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load session data: {exc}",
+        ) from exc
+
+
+@app.get("/api/race/simulation")
+def race_simulation(
+    session_id: str = Query(DEFAULT_RACE_SESSION_ID, min_length=1),
+) -> dict:
+    try:
+        return load_race_simulation_by_session_id(session_id=session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OpenF1Error as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to build race simulation: {exc}",
         ) from exc
 
 
