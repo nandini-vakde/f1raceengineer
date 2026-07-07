@@ -754,6 +754,27 @@ button {
   color: #5cff85;
 }
 
+.engineer-status--standby {
+  color: var(--muted);
+}
+
+.engineer-status--live {
+  color: #5cff85;
+}
+
+.engineer-empty {
+  padding: 1.25rem;
+  margin: 0;
+}
+
+.engineer-error {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .engineer-feed {
   max-height: 320px;
   overflow-y: auto;

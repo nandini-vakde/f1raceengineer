@@ -1,4 +1,10 @@
-def build_prompt(point):
+def build_prompt(point, events=None):
+
+    context = ""
+    if events:
+        context = f"Context: {', '.join(events)}\n"
+
+    lap = point.get("lap", "?")
 
     return f"""
 You are a Formula 1 race engineer.
@@ -12,7 +18,8 @@ Rules:
 - Sound like a real F1 engineer.
 - Only use information provided.
 
-Telemetry:
+{context}Telemetry:
+Lap: {lap}
 Speed: {point['speed']}
 RPM: {point['rpm']}
 Throttle: {point['throttle']}

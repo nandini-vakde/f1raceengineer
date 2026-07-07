@@ -85,6 +85,9 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [dataSource, setDataSource] = useState(null)
+  const [engineerMessages, setEngineerMessages] = useState([])
+  const [engineerStatus, setEngineerStatus] = useState('STANDBY')
+  const [engineerError, setEngineerError] = useState(null)
 
   useEffect(() => {
     fetchSessions()
@@ -127,10 +130,16 @@ function App() {
   }, [sessionId, loadOverview])
 
   const handleSessionChange = (nextSessionId) => {
+    setEngineerMessages([])
+    setEngineerError(null)
+    setEngineerStatus('STANDBY')
     setSessionId(nextSessionId)
   }
 
   const handleDriverChange = (nextDriver) => {
+    setEngineerMessages([])
+    setEngineerError(null)
+    setEngineerStatus('STANDBY')
     setDriver(nextDriver)
     loadOverview({
       nextSessionId: sessionId,
@@ -138,6 +147,10 @@ function App() {
       keepDriver: true,
     })
   }
+
+  const handleEngineerMessage = useCallback((msg) => {
+    setEngineerMessages((prev) => [...prev, msg])
+  }, [])
 
   const dataset = overview?.datasets?.[activeDataset]
   const session = overview?.session
@@ -214,9 +227,16 @@ function App() {
               sessionId={sessionId}
               driver={driver}
               driverInfo={selectedDriverInfo}
+              onEngineerMessage={handleEngineerMessage}
+              onEngineerStatus={setEngineerStatus}
+              onEngineerError={setEngineerError}
             />
 
-            <AIEngineerPanel />
+            <AIEngineerPanel
+              messages={engineerMessages}
+              status={engineerStatus}
+              error={engineerError}
+            />
           </>
         )}
 

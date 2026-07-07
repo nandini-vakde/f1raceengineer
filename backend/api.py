@@ -8,8 +8,21 @@ from sessions_catalog import list_sessions
 from telemetry_replay import load_replay_by_session_id
 
 from ai.engineer import RaceEngineer
+from ai.memory import EngineerMemory
+from analytics.event_detector import EventDetector
+from analytics.feature_builder import FeatureBuilder
 
 engineer = RaceEngineer()
+feature_builder = FeatureBuilder()
+event_detector = EventDetector()
+engineer_memories: dict[str, EngineerMemory] = {}
+
+
+def _get_engineer_memory(session_id: str, driver: str) -> EngineerMemory:
+    key = f"{session_id}:{driver}"
+    if key not in engineer_memories:
+        engineer_memories[key] = EngineerMemory()
+    return engineer_memories[key]
 
 app = FastAPI(title="F1 Race Engineer API")
 
@@ -74,16 +87,44 @@ def telemetry_replay(
 
 @app.get("/api/engineer")
 def engineer_message(
-    session_id: str,
-    point_index: int
-):
+    session_id: str = Query(DEFAULT_SESSION_ID, min_length=1),
+    driver: str | None = Query(None, min_length=1),
+    point_index: int = Query(..., ge=0),
+) -> dict:
+    try:
+        replay = load_replay_by_session_id(session_id=session_id, driver=driver)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OpenF1Error as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load replay for engineer: {exc}",
+        ) from exc
 
-    replay = load_replay_by_session_id(session_id)
+    points = replay["points"]
+    if point_index >= len(points):
+        raise HTTPException(
+            status_code=400,
+            detail=f"point_index must be less than {len(points)}",
+        )
 
-    point = replay["points"][point_index]
+    resolved_driver = driver or replay.get("driver", "VER")
+    point = points[point_index]
+    features = feature_builder.build(point)
+    events = event_detector.detect(features)
+    memory = _get_engineer_memory(session_id, resolved_driver)
 
-    message = engineer.process(point)
+    if not events or not memory.should_generate(events):
+        return {"message": None, "events": events, "skipped": True}
 
-    return {
-        "message": message
-    }
+    try:
+        message = engineer.process(point, events=events)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Engineer LLM failed: {exc}",
+        ) from exc
+
+    return {"message": message, "events": events, "skipped": False}

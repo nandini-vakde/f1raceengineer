@@ -51,6 +51,22 @@ async function isApiReachable() {
   }
 }
 
+export async function fetchEngineer({ sessionId, driver, pointIndex }) {
+  const params = new URLSearchParams({
+    session_id: sessionId,
+    point_index: String(pointIndex),
+  })
+  if (driver) params.set('driver', driver)
+
+  const res = await fetch(`/api/engineer?${params}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const detail = body.detail || `Engineer API error ${res.status}`
+    throw new Error(typeof detail === 'string' ? detail : 'Engineer request failed')
+  }
+  return res.json()
+}
+
 export async function fetchTelemetryReplay({ sessionId, driver }) {
   const params = new URLSearchParams({ session_id: sessionId })
   if (driver) params.set('driver', driver)
