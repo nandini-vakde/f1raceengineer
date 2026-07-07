@@ -134,6 +134,7 @@ export default function TelemetryReplay({
   sessionId,
   driver,
   driverInfo,
+  selectedPersonality,
   onEngineerMessage,
   onEngineerStatus,
   onEngineerError,
@@ -242,7 +243,7 @@ export default function TelemetryReplay({
     lastEngineerIdxRef.current = currentIdx
     onEngineerStatus?.(playing ? 'LIVE' : 'STANDBY')
 
-    fetchEngineer({ sessionId, driver, pointIndex: currentIdx })
+    fetchEngineer({ sessionId, driver, pointIndex: currentIdx, personality: selectedPersonality })
       .then((result) => {
         onEngineerError?.(null)
         if (result.message) {
