@@ -51,12 +51,13 @@ async function isApiReachable() {
   }
 }
 
-export async function fetchEngineer({ sessionId, driver, pointIndex }) {
+export async function fetchEngineer({ sessionId, driver, pointIndex, personality }) {
   const params = new URLSearchParams({
     session_id: sessionId,
     point_index: String(pointIndex),
   })
   if (driver) params.set('driver', driver)
+  if (personality) params.set('personality', personality)
 
   const res = await fetch(`/api/engineer?${params}`)
   if (!res.ok) {
@@ -65,6 +66,13 @@ export async function fetchEngineer({ sessionId, driver, pointIndex }) {
     throw new Error(typeof detail === 'string' ? detail : 'Engineer request failed')
   }
   return res.json()
+}
+
+export async function fetchPersonalities() {
+  const res = await fetch('/api/personalities')
+  if (!res.ok) throw new Error('Failed to fetch personalities')
+  const body = await res.json()
+  return body.personalities || []
 }
 
 export async function fetchTelemetryReplay({ sessionId, driver }) {

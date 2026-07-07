@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchOverview, fetchSessions } from './api'
+import { fetchOverview, fetchSessions, fetchPersonalities } from './api'
 import TelemetryReplay from './TelemetryReplay'
 import './App.css'
 import AIEngineerPanel from './AIEngineerPanel'
@@ -89,6 +89,9 @@ function App() {
   const [engineerStatus, setEngineerStatus] = useState('STANDBY')
   const [engineerError, setEngineerError] = useState(null)
 
+  const [personalities, setPersonalities] = useState([])
+  const [selectedPersonality, setSelectedPersonality] = useState(null)
+
   useEffect(() => {
     fetchSessions()
       .then((data) => {
@@ -99,6 +102,13 @@ function App() {
         }
       })
       .catch((err) => setError(err.message))
+
+    fetchPersonalities()
+      .then((list) => {
+        setPersonalities(list)
+        if (list.length) setSelectedPersonality(list[0].id)
+      })
+      .catch(() => {})
   }, [])
 
   const loadOverview = useCallback(
@@ -196,7 +206,21 @@ function App() {
             {drivers.map((d) => (
               <option key={d.code} value={d.code}>
                 {d.code} — {d.name}
-                {d.team ? ` (${d.team})` : ''}
+                {d.team ? ` ({d.team})` : ''}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            id="personality-select"
+            label="Engineer voice"
+            value={selectedPersonality || ''}
+            onChange={(v) => setSelectedPersonality(v)}
+            disabled={!personalities.length}
+          >
+            {personalities.map((p) => (
+              <option key={p.id} value={p.id} title={p.description}>
+                {p.name}
               </option>
             ))}
           </FilterSelect>
@@ -223,10 +247,11 @@ function App() {
         {driver && !loading && (
           <>
             <TelemetryReplay
-              key={`${sessionId}-${driver}`}
+              key={`${sessionId}-${driver}-${selectedPersonality}`}
               sessionId={sessionId}
               driver={driver}
               driverInfo={selectedDriverInfo}
+              selectedPersonality={selectedPersonality}
               onEngineerMessage={handleEngineerMessage}
               onEngineerStatus={setEngineerStatus}
               onEngineerError={setEngineerError}

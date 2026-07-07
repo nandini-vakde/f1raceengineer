@@ -11,6 +11,7 @@ from ai.engineer import RaceEngineer
 from ai.memory import EngineerMemory
 from analytics.event_detector import EventDetector
 from analytics.feature_builder import FeatureBuilder
+from ai.personalities import get_personality, list_personalities
 
 engineer = RaceEngineer()
 feature_builder = FeatureBuilder()
@@ -85,11 +86,18 @@ def telemetry_replay(
             detail=f"Failed to build telemetry replay: {exc}",
         ) from exc
 
+
+@app.get("/api/personalities")
+def personalities() -> dict:
+    return {"personalities": list_personalities()}
+
+
 @app.get("/api/engineer")
 def engineer_message(
     session_id: str = Query(DEFAULT_SESSION_ID, min_length=1),
     driver: str | None = Query(None, min_length=1),
     point_index: int = Query(..., ge=0),
+    personality: str | None = Query(None, min_length=1),
 ) -> dict:
     try:
         replay = load_replay_by_session_id(session_id=session_id, driver=driver)
@@ -120,7 +128,8 @@ def engineer_message(
         return {"message": None, "events": events, "skipped": True}
 
     try:
-        message = engineer.process(point, events=events)
+        personality_obj = get_personality(personality)
+        message = engineer.process(point, events=events, personality=personality_obj)
     except Exception as exc:
         raise HTTPException(
             status_code=502,
