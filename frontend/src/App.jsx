@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchOverview, fetchSessions } from './api'
+import { fetchOverview, fetchSessions, fetchPersonalities } from './api'
 import RaceLeaderboard from './RaceLeaderboard'
 import TelemetryReplay from './TelemetryReplay'
 import './App.css'
@@ -92,6 +92,12 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [dataSource, setDataSource] = useState(null)
+  const [engineerMessages, setEngineerMessages] = useState([])
+  const [engineerStatus, setEngineerStatus] = useState('STANDBY')
+  const [engineerError, setEngineerError] = useState(null)
+
+  const [personalities, setPersonalities] = useState([])
+  const [selectedPersonality, setSelectedPersonality] = useState(null)
 
   useEffect(() => {
     fetchSessions()
@@ -103,6 +109,13 @@ function App() {
         }
       })
       .catch((err) => setError(err.message))
+
+    fetchPersonalities()
+      .then((list) => {
+        setPersonalities(list)
+        if (list.length) setSelectedPersonality(list[0].id)
+      })
+      .catch(() => {})
   }, [])
 
   const loadOverview = useCallback(
@@ -140,10 +153,16 @@ function App() {
   }, [sessionId, loadOverview])
 
   const handleSessionChange = (nextSessionId) => {
+    setEngineerMessages([])
+    setEngineerError(null)
+    setEngineerStatus('STANDBY')
     setSessionId(nextSessionId)
   }
 
   const handleDriverChange = (nextDriver) => {
+    setEngineerMessages([])
+    setEngineerError(null)
+    setEngineerStatus('STANDBY')
     setDriver(nextDriver)
     const isRace =
       overview?.session?.sessionType === 'R' ||
@@ -155,6 +174,10 @@ function App() {
       silent: isRace,
     })
   }
+
+  const handleEngineerMessage = useCallback((msg) => {
+    setEngineerMessages((prev) => [...prev, msg])
+  }, [])
 
   const dataset = overview?.datasets?.[activeDataset]
   const session = overview?.session
@@ -216,7 +239,21 @@ function App() {
             {drivers.map((d) => (
               <option key={d.code} value={d.code}>
                 {d.code} — {d.name}
-                {d.team ? ` (${d.team})` : ''}
+                {d.team ? ` ({d.team})` : ''}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            id="personality-select"
+            label="Engineer voice"
+            value={selectedPersonality || ''}
+            onChange={(v) => setSelectedPersonality(v)}
+            disabled={!personalities.length}
+          >
+            {personalities.map((p) => (
+              <option key={p.id} value={p.id} title={p.description}>
+                {p.name}
               </option>
             ))}
           </FilterSelect>
@@ -251,13 +288,21 @@ function App() {
         {driver && overview && !loading && (
           <>
             <TelemetryReplay
-              key={`${sessionId}-${driver}`}
+              key={`${sessionId}-${driver}-${selectedPersonality}`}
               sessionId={sessionId}
               driver={driver}
               driverInfo={selectedDriverInfo}
+              selectedPersonality={selectedPersonality}
+              onEngineerMessage={handleEngineerMessage}
+              onEngineerStatus={setEngineerStatus}
+              onEngineerError={setEngineerError}
             />
 
-            <AIEngineerPanel />
+            <AIEngineerPanel
+              messages={engineerMessages}
+              status={engineerStatus}
+              error={engineerError}
+            />
           </>
         )}
 

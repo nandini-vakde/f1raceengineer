@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchTelemetryReplay } from './api'
+import { fetchEngineer, fetchTelemetryReplay } from './api'
+import { tagFromEvents } from './engineerUtils'
 
 const SPEEDS = [1, 2, 4, 8]
+const ENGINEER_POLL_MS = 5000
 
 function formatRaceTime(seconds) {
   if (seconds == null || Number.isNaN(seconds)) return '00:00.000'
@@ -187,7 +189,15 @@ function formatMetric(value, digits = 0) {
   return digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString()
 }
 
-export default function TelemetryReplay({ sessionId, driver, driverInfo }) {
+export default function TelemetryReplay({
+  sessionId,
+  driver,
+  driverInfo,
+  selectedPersonality,
+  onEngineerMessage,
+  onEngineerStatus,
+  onEngineerError,
+}) {
   const [replay, setReplay] = useState(null)
   const [replaySource, setReplaySource] = useState(null)
   const [isDemo, setIsDemo] = useState(false)
@@ -201,6 +211,8 @@ export default function TelemetryReplay({ sessionId, driver, driverInfo }) {
   const rafRef = useRef(null)
   const lastFrameRef = useRef(null)
   const playheadRef = useRef(0)
+  const lastEngineerFetchRef = useRef(0)
+  const lastEngineerIdxRef = useRef(-1)
 
   const loadReplay = useCallback(async () => {
     if (!sessionId || !driver) return
@@ -232,6 +244,8 @@ export default function TelemetryReplay({ sessionId, driver, driverInfo }) {
 
   useEffect(() => {
     loadReplay()
+    lastEngineerFetchRef.current = 0
+    lastEngineerIdxRef.current = -1
   }, [loadReplay])
 
   useEffect(() => {
@@ -266,6 +280,53 @@ export default function TelemetryReplay({ sessionId, driver, driverInfo }) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
   }, [playing, replay, speed])
+
+  useEffect(() => {
+    if (!onEngineerMessage || !replay?.points?.length || loading) return
+
+    const points = replay.points
+    const { point: current, index: currentIdx } = findPointAtTime(points, playhead)
+    const inPitLane = isInPit(current)
+
+    if (inPitLane || currentIdx < 0) return
+
+    const now = Date.now()
+    const idxChanged = currentIdx !== lastEngineerIdxRef.current
+    const due = now - lastEngineerFetchRef.current >= ENGINEER_POLL_MS
+
+    if (!idxChanged && !due) return
+
+    lastEngineerFetchRef.current = now
+    lastEngineerIdxRef.current = currentIdx
+    onEngineerStatus?.(playing ? 'LIVE' : 'STANDBY')
+
+    fetchEngineer({ sessionId, driver, pointIndex: currentIdx, personality: selectedPersonality })
+      .then((result) => {
+        onEngineerError?.(null)
+        if (result.message) {
+          onEngineerMessage({
+            timestamp: formatRaceTime(playhead),
+            type: tagFromEvents(result.events),
+            text: result.message,
+          })
+        }
+      })
+      .catch((err) => {
+        onEngineerError?.(err.message)
+        onEngineerStatus?.('STANDBY')
+      })
+  }, [
+    playhead,
+    loading,
+    playing,
+    replay,
+    sessionId,
+    driver,
+    selectedPersonality,
+    onEngineerMessage,
+    onEngineerStatus,
+    onEngineerError,
+  ])
 
   const points = replay?.points ?? []
   const { point: current, index: currentIdx } = findPointAtTime(points, playhead)
