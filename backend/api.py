@@ -9,24 +9,6 @@ from race_simulation import DEFAULT_RACE_SESSION_ID, load_race_simulation_by_ses
 from race_timeline import simulate_branch
 from telemetry_replay import load_replay_by_session_id
 
-from ai.engineer import RaceEngineer
-from ai.memory import EngineerMemory
-from analytics.event_detector import EventDetector
-from analytics.feature_builder import FeatureBuilder
-from ai.personalities import get_personality, list_personalities
-
-engineer = RaceEngineer()
-feature_builder = FeatureBuilder()
-event_detector = EventDetector()
-engineer_memories: dict[str, EngineerMemory] = {}
-
-
-def _get_engineer_memory(session_id: str, driver: str) -> EngineerMemory:
-    key = f"{session_id}:{driver}"
-    if key not in engineer_memories:
-        engineer_memories[key] = EngineerMemory()
-    return engineer_memories[key]
-
 app = FastAPI(title="F1 Race Engineer API")
 
 app.add_middleware(
@@ -217,58 +199,6 @@ def engineer_message(
     try:
         personality_obj = ai.get_personality(personality)
         message = ai.engineer.process(point, events=events, personality=personality_obj)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Engineer LLM failed: {exc}",
-        ) from exc
-
-    return {"message": message, "events": events, "skipped": False}
-
-
-@app.get("/api/personalities")
-def personalities() -> dict:
-    return {"personalities": list_personalities()}
-
-
-@app.get("/api/engineer")
-def engineer_message(
-    session_id: str = Query(DEFAULT_SESSION_ID, min_length=1),
-    driver: str | None = Query(None, min_length=1),
-    point_index: int = Query(..., ge=0),
-    personality: str | None = Query(None, min_length=1),
-) -> dict:
-    try:
-        replay = load_replay_by_session_id(session_id=session_id, driver=driver)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except OpenF1Error as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load replay for engineer: {exc}",
-        ) from exc
-
-    points = replay["points"]
-    if point_index >= len(points):
-        raise HTTPException(
-            status_code=400,
-            detail=f"point_index must be less than {len(points)}",
-        )
-
-    resolved_driver = driver or replay.get("driver", "VER")
-    point = points[point_index]
-    features = feature_builder.build(point)
-    events = event_detector.detect(features)
-    memory = _get_engineer_memory(session_id, resolved_driver)
-
-    if not events or not memory.should_generate(events):
-        return {"message": None, "events": events, "skipped": True}
-
-    try:
-        personality_obj = get_personality(personality)
-        message = engineer.process(point, events=events, personality=personality_obj)
     except Exception as exc:
         raise HTTPException(
             status_code=502,

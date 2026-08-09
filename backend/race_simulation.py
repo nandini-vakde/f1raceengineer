@@ -117,9 +117,24 @@ def _position_at_time(timeline: pd.DataFrame | None, t: float | None) -> int | N
     return _safe_int(eligible.iloc[-1]["position"])
 
 
+def _is_valid_pit_stop(row: dict) -> bool:
+    """Drop OpenF1 grid-to-flag artifacts (e.g. lap 1 lane_duration ~2400s)."""
+    duration = row.get("pit_duration") or row.get("lane_duration")
+    if duration is None:
+        return False
+    try:
+        seconds = float(duration)
+    except (TypeError, ValueError):
+        return False
+    # Real F1 pit lane times are roughly 18–45s; grid hold times are minutes.
+    return 12.0 <= seconds <= 90.0
+
+
 def _build_pit_lookup(pit_rows: list[dict]) -> dict[tuple[int, int], dict]:
     lookup: dict[tuple[int, int], dict] = {}
     for row in pit_rows:
+        if not _is_valid_pit_stop(row):
+            continue
         dn = row.get("driver_number")
         lap = row.get("lap_number")
         if dn is None or lap is None:
@@ -349,7 +364,7 @@ def build_race_simulation(
                 "date": row.get("date"),
             }
             for row in pit_rows
-            if row.get("driver_number") in by_number
+            if row.get("driver_number") in by_number and _is_valid_pit_stop(row)
         ],
     }
 
