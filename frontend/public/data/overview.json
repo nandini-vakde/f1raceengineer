@@ -1,124 +1,1342 @@
 {
   "session": {
-    "id": "2024-monaco-r",
     "year": 2024,
     "location": "Monaco",
     "sessionType": "R",
     "name": "Race",
-    "eventName": "Monaco Grand Prix",
-    "date": "2024-05-26 14:00:00"
+    "eventName": "Monaco",
+    "date": "2024-05-26T13:00:00+00:00",
+    "session_key": 9523,
+    "id": "2024-monaco-r"
   },
   "drivers": [
-    { "code": "LEC", "name": "C LECLERC", "team": "Ferrari" },
-    { "code": "PIA", "name": "P PIASTRI", "team": "McLaren" },
-    { "code": "SAI", "name": "C SAINZ", "team": "Ferrari" },
-    { "code": "NOR", "name": "L NORRIS", "team": "McLaren" },
-    { "code": "VER", "name": "M VERSTAPPEN", "team": "Red Bull Racing" }
+    {
+      "code": "ALB",
+      "name": "A ALBON",
+      "team": "Williams"
+    },
+    {
+      "code": "LEC",
+      "name": "C LECLERC",
+      "team": "Ferrari"
+    },
+    {
+      "code": "SAI",
+      "name": "C SAINZ",
+      "team": "Ferrari"
+    },
+    {
+      "code": "RIC",
+      "name": "D RICCIARDO",
+      "team": "RB"
+    },
+    {
+      "code": "OCO",
+      "name": "E OCON",
+      "team": "Alpine"
+    },
+    {
+      "code": "ALO",
+      "name": "F ALONSO",
+      "team": "Aston Martin"
+    },
+    {
+      "code": "RUS",
+      "name": "G RUSSELL",
+      "team": "Mercedes"
+    },
+    {
+      "code": "ZHO",
+      "name": "G ZHOU",
+      "team": "Kick Sauber"
+    },
+    {
+      "code": "MAG",
+      "name": "K MAGNUSSEN",
+      "team": "Haas F1 Team"
+    },
+    {
+      "code": "HAM",
+      "name": "L HAMILTON",
+      "team": "Mercedes"
+    },
+    {
+      "code": "NOR",
+      "name": "L NORRIS",
+      "team": "McLaren"
+    },
+    {
+      "code": "SAR",
+      "name": "L SARGEANT",
+      "team": "Williams"
+    },
+    {
+      "code": "STR",
+      "name": "L STROLL",
+      "team": "Aston Martin"
+    },
+    {
+      "code": "VER",
+      "name": "M VERSTAPPEN",
+      "team": "Red Bull Racing"
+    },
+    {
+      "code": "HUL",
+      "name": "N HULKENBERG",
+      "team": "Haas F1 Team"
+    },
+    {
+      "code": "PIA",
+      "name": "O PIASTRI",
+      "team": "McLaren"
+    },
+    {
+      "code": "GAS",
+      "name": "P GASLY",
+      "team": "Alpine"
+    },
+    {
+      "code": "PER",
+      "name": "S PEREZ",
+      "team": "Red Bull Racing"
+    },
+    {
+      "code": "BOT",
+      "name": "V BOTTAS",
+      "team": "Kick Sauber"
+    },
+    {
+      "code": "TSU",
+      "name": "Y TSUNODA",
+      "team": "RB"
+    }
   ],
   "selectedDriver": "VER",
   "datasets": {
     "results": {
       "id": "results",
       "title": "Session Result",
-      "description": "Result row for VER in this session.",
-      "source": "session.results[session.results['Abbreviation'] == 'VER']",
+      "description": "Result row for VER (OpenF1 session_result).",
+      "source": "GET /v1/session_result?session_key=9523",
       "columns": [
-        { "name": "Position", "dtype": "float64" },
-        { "name": "BroadcastName", "dtype": "object" },
-        { "name": "Abbreviation", "dtype": "object" },
-        { "name": "TeamName", "dtype": "object" },
-        { "name": "GridPosition", "dtype": "float64" },
-        { "name": "Points", "dtype": "float64" },
-        { "name": "Status", "dtype": "object" }
+        {
+          "name": "Position",
+          "dtype": "float64"
+        },
+        {
+          "name": "BroadcastName",
+          "dtype": "object"
+        },
+        {
+          "name": "Abbreviation",
+          "dtype": "object"
+        },
+        {
+          "name": "TeamName",
+          "dtype": "object"
+        },
+        {
+          "name": "DriverNumber",
+          "dtype": "int64"
+        },
+        {
+          "name": "Points",
+          "dtype": "float64"
+        },
+        {
+          "name": "NumberOfLaps",
+          "dtype": "int64"
+        },
+        {
+          "name": "GapToLeader",
+          "dtype": "object"
+        },
+        {
+          "name": "DNF",
+          "dtype": "bool"
+        }
       ],
       "rowCount": 1,
       "previewRows": [
         {
-          "Position": 1,
+          "Position": 6.0,
           "BroadcastName": "M VERSTAPPEN",
           "Abbreviation": "VER",
           "TeamName": "Red Bull Racing",
-          "GridPosition": 2,
-          "Points": 25,
-          "Status": "Finished"
+          "DriverNumber": 1,
+          "Points": 8.0,
+          "NumberOfLaps": 78,
+          "GapToLeader": 13.853,
+          "DNF": false
         }
       ]
     },
     "laps": {
       "id": "laps",
       "title": "Lap Times",
-      "description": "Per-lap data for VER (timing, sectors, compounds).",
-      "source": "session.laps.pick_driver('VER')",
+      "description": "Per-lap data for VER from OpenF1 /v1/laps.",
+      "source": "GET /v1/laps?session_key=9523&driver_number=1",
       "columns": [
-        { "name": "Driver", "dtype": "object" },
-        { "name": "LapNumber", "dtype": "int64" },
-        { "name": "LapTime", "dtype": "timedelta64[ns]" },
-        { "name": "Sector1Time", "dtype": "timedelta64[ns]" },
-        { "name": "Sector2Time", "dtype": "timedelta64[ns]" },
-        { "name": "Sector3Time", "dtype": "timedelta64[ns]" },
-        { "name": "Compound", "dtype": "object" },
-        { "name": "TyreLife", "dtype": "float64" }
+        {
+          "name": "Driver",
+          "dtype": "int64"
+        },
+        {
+          "name": "LapNumber",
+          "dtype": "int64"
+        },
+        {
+          "name": "LapTime",
+          "dtype": "float64"
+        },
+        {
+          "name": "Sector1Time",
+          "dtype": "float64"
+        },
+        {
+          "name": "Sector2Time",
+          "dtype": "float64"
+        },
+        {
+          "name": "Sector3Time",
+          "dtype": "float64"
+        },
+        {
+          "name": "Compound",
+          "dtype": "object"
+        },
+        {
+          "name": "TyreLife",
+          "dtype": "object"
+        },
+        {
+          "name": "IsPitOutLap",
+          "dtype": "bool"
+        },
+        {
+          "name": "DateStart",
+          "dtype": "object"
+        }
       ],
       "rowCount": 78,
       "previewRows": [
         {
-          "Driver": "VER",
+          "Driver": 1,
           "LapNumber": 1,
-          "LapTime": "0 days 00:01:18.234000",
-          "Sector1Time": "0 days 00:00:26.100000",
-          "Sector2Time": "0 days 00:00:32.400000",
-          "Sector3Time": "0 days 00:00:19.734000",
-          "Compound": "SOFT",
-          "TyreLife": 1
+          "LapTime": null,
+          "Sector1Time": null,
+          "Sector2Time": 50.381,
+          "Sector3Time": null,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:44:00.121000+00:00"
         },
         {
-          "Driver": "VER",
+          "Driver": 1,
           "LapNumber": 2,
-          "LapTime": "0 days 00:01:17.891000",
-          "Sector1Time": "0 days 00:00:25.800000",
-          "Sector2Time": "0 days 00:00:32.100000",
-          "Sector3Time": "0 days 00:00:19.991000",
-          "Compound": "SOFT",
-          "TyreLife": 2
+          "LapTime": 157.443,
+          "Sector1Time": 24.134,
+          "Sector2Time": 38.218,
+          "Sector3Time": 95.091,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": true,
+          "DateStart": "2024-05-26T13:44:30.498000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 3,
+          "LapTime": 85.744,
+          "Sector1Time": 24.715,
+          "Sector2Time": 38.86,
+          "Sector3Time": 22.169,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:47:08.020000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 4,
+          "LapTime": 83.275,
+          "Sector1Time": 21.947,
+          "Sector2Time": 38.888,
+          "Sector3Time": 22.44,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:48:33.620000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 5,
+          "LapTime": 83.4,
+          "Sector1Time": 22.318,
+          "Sector2Time": 38.953,
+          "Sector3Time": 22.129,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:49:56.954000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 6,
+          "LapTime": 83.787,
+          "Sector1Time": 21.761,
+          "Sector2Time": 39.71,
+          "Sector3Time": 22.316,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:51:20.348000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 7,
+          "LapTime": 81.283,
+          "Sector1Time": 21.383,
+          "Sector2Time": 38.2,
+          "Sector3Time": 21.7,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:52:44.055000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 8,
+          "LapTime": 81.657,
+          "Sector1Time": 21.194,
+          "Sector2Time": 38.504,
+          "Sector3Time": 21.959,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:54:05.343000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 9,
+          "LapTime": 81.74,
+          "Sector1Time": 21.492,
+          "Sector2Time": 38.489,
+          "Sector3Time": 21.759,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:55:27.081000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 10,
+          "LapTime": 81.244,
+          "Sector1Time": 21.172,
+          "Sector2Time": 38.177,
+          "Sector3Time": 21.895,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:56:48.824000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 11,
+          "LapTime": 81.492,
+          "Sector1Time": 21.223,
+          "Sector2Time": 38.28,
+          "Sector3Time": 21.989,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:58:09.966000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 12,
+          "LapTime": 80.659,
+          "Sector1Time": 21.27,
+          "Sector2Time": 37.879,
+          "Sector3Time": 21.51,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T13:59:31.542000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 13,
+          "LapTime": 79.904,
+          "Sector1Time": 20.858,
+          "Sector2Time": 37.533,
+          "Sector3Time": 21.513,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:00:52.293000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 14,
+          "LapTime": 79.723,
+          "Sector1Time": 20.849,
+          "Sector2Time": 37.408,
+          "Sector3Time": 21.466,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:02:12.086000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 15,
+          "LapTime": 80.37,
+          "Sector1Time": 20.949,
+          "Sector2Time": 37.792,
+          "Sector3Time": 21.629,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:03:31.733000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 16,
+          "LapTime": 80.287,
+          "Sector1Time": 21.059,
+          "Sector2Time": 37.755,
+          "Sector3Time": 21.473,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:04:52.224000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 17,
+          "LapTime": 79.898,
+          "Sector1Time": 20.952,
+          "Sector2Time": 37.61,
+          "Sector3Time": 21.336,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:06:12.507000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 18,
+          "LapTime": 79.58,
+          "Sector1Time": 21.012,
+          "Sector2Time": 37.408,
+          "Sector3Time": 21.16,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:07:32.403000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 19,
+          "LapTime": 80.171,
+          "Sector1Time": 21.034,
+          "Sector2Time": 37.869,
+          "Sector3Time": 21.268,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:08:51.930000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 20,
+          "LapTime": 79.886,
+          "Sector1Time": 20.908,
+          "Sector2Time": 37.402,
+          "Sector3Time": 21.576,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:10:12.152000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 21,
+          "LapTime": 80.255,
+          "Sector1Time": 21.039,
+          "Sector2Time": 37.731,
+          "Sector3Time": 21.485,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:11:32.084000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 22,
+          "LapTime": 79.813,
+          "Sector1Time": 21.017,
+          "Sector2Time": 37.631,
+          "Sector3Time": 21.165,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:12:52.188000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 23,
+          "LapTime": 78.979,
+          "Sector1Time": 20.825,
+          "Sector2Time": 36.884,
+          "Sector3Time": 21.27,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:14:12.043000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 24,
+          "LapTime": 79.364,
+          "Sector1Time": 20.83,
+          "Sector2Time": 37.287,
+          "Sector3Time": 21.247,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:15:31.086000+00:00"
+        },
+        {
+          "Driver": 1,
+          "LapNumber": 25,
+          "LapTime": 79.38,
+          "Sector1Time": 20.827,
+          "Sector2Time": 37.328,
+          "Sector3Time": 21.225,
+          "Compound": null,
+          "TyreLife": null,
+          "IsPitOutLap": false,
+          "DateStart": "2024-05-26T14:16:50.383000+00:00"
         }
       ]
     },
     "telemetry": {
       "id": "telemetry",
       "title": "Telemetry",
-      "description": "Car telemetry from VER's fastest lap (speed, throttle, brake, gear, track position).",
-      "source": "session.laps.pick_driver('VER').pick_fastest().get_telemetry()",
+      "description": "Car + location samples for VER (OpenF1 car_data + location).",
+      "source": "GET /v1/car_data + /v1/location ?session_key=9523&driver_number=1",
       "columns": [
-        { "name": "Time", "dtype": "timedelta64[ns]" },
-        { "name": "Speed", "dtype": "float64" },
-        { "name": "RPM", "dtype": "float64" },
-        { "name": "Throttle", "dtype": "float64" },
-        { "name": "Brake", "dtype": "bool" },
-        { "name": "nGear", "dtype": "int64" },
-        { "name": "X", "dtype": "float64" },
-        { "name": "Y", "dtype": "float64" }
-      ],
-      "rowCount": 682,
-      "previewRows": [
         {
-          "Time": "0 days 00:00:00",
-          "Speed": 0,
-          "RPM": 10500,
-          "Throttle": 0,
-          "Brake": false,
-          "nGear": 1,
-          "X": 120.5,
-          "Y": 450.2
+          "name": "Time",
+          "dtype": "object"
         },
         {
-          "Time": "0 days 00:00:00.100000",
-          "Speed": 42,
-          "RPM": 11200,
-          "Throttle": 85,
-          "Brake": false,
-          "nGear": 2,
-          "X": 122.1,
-          "Y": 451.0
+          "name": "session_key",
+          "dtype": "int64"
+        },
+        {
+          "name": "Throttle",
+          "dtype": "int64"
+        },
+        {
+          "name": "Speed",
+          "dtype": "int64"
+        },
+        {
+          "name": "RPM",
+          "dtype": "int64"
+        },
+        {
+          "name": "Brake",
+          "dtype": "int64"
+        },
+        {
+          "name": "nGear",
+          "dtype": "int64"
+        },
+        {
+          "name": "driver_number",
+          "dtype": "int64"
+        },
+        {
+          "name": "meeting_key",
+          "dtype": "int64"
+        },
+        {
+          "name": "DRS",
+          "dtype": "int64"
+        },
+        {
+          "name": "X",
+          "dtype": "float64"
+        },
+        {
+          "name": "Y",
+          "dtype": "float64"
+        }
+      ],
+      "rowCount": 25,
+      "previewRows": [
+        {
+          "Time": "2024-05-26T12:08:08.225000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:08.505000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:08.745000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:08.985000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:09.145000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:09.385000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:09.865000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:10.025000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:10.265000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:10.465000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:10.625000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:10.785000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:11.105000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:11.304000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:11.704000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:11.904000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:12.305000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:12.505000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:12.665000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:12.985000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:13.145000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:13.345000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:13.545000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:13.785000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        },
+        {
+          "Time": "2024-05-26T12:08:13.985000+00:00",
+          "session_key": 9523,
+          "Throttle": 0,
+          "Speed": 0,
+          "RPM": 0,
+          "Brake": 0,
+          "nGear": 0,
+          "driver_number": 1,
+          "meeting_key": 1236,
+          "DRS": 0,
+          "X": null,
+          "Y": null
+        }
+      ]
+    },
+    "raceLaps": {
+      "id": "raceLaps",
+      "title": "Race Laps (merged)",
+      "description": "All drivers' lap data merged by lap number \u2014 one row per driver per lap with position, gaps, and sector times.",
+      "source": "GET /api/race/simulation (built from /v1/laps?session_key=9523)",
+      "columns": [
+        {
+          "name": "LapNumber",
+          "dtype": "int64"
+        },
+        {
+          "name": "Position",
+          "dtype": "int64"
+        },
+        {
+          "name": "Driver",
+          "dtype": "object"
+        },
+        {
+          "name": "LapTime",
+          "dtype": "float64"
+        },
+        {
+          "name": "Sector1",
+          "dtype": "float64"
+        },
+        {
+          "name": "Sector2",
+          "dtype": "float64"
+        },
+        {
+          "name": "Sector3",
+          "dtype": "float64"
+        },
+        {
+          "name": "Compound",
+          "dtype": "object"
+        },
+        {
+          "name": "TyreLife",
+          "dtype": "object"
+        },
+        {
+          "name": "GapToLeader",
+          "dtype": "float64"
+        },
+        {
+          "name": "Interval",
+          "dtype": "float64"
+        },
+        {
+          "name": "CumulativeTime",
+          "dtype": "float64"
+        }
+      ],
+      "rowCount": 1237,
+      "previewRows": [
+        {
+          "LapNumber": 1,
+          "Position": 1,
+          "Driver": "VER",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 50.381,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 2,
+          "Driver": "SAR",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 61.643,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 3,
+          "Driver": "RIC",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 59.863,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 4,
+          "Driver": "NOR",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 47.606,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 5,
+          "Driver": "GAS",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 57.79,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 6,
+          "Driver": "PER",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": null,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 7,
+          "Driver": "ALO",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 60.893,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 8,
+          "Driver": "LEC",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 46.389,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 9,
+          "Driver": "STR",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 59.54,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 10,
+          "Driver": "MAG",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": null,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 11,
+          "Driver": "TSU",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 54.783,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 12,
+          "Driver": "ALB",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 55.498,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 13,
+          "Driver": "ZHO",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 49.767,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 14,
+          "Driver": "HUL",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": null,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 15,
+          "Driver": "OCO",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 69.91,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 16,
+          "Driver": "HAM",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 52.196,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 17,
+          "Driver": "SAI",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 58.173,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 18,
+          "Driver": "RUS",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 49.669,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 19,
+          "Driver": "BOT",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 63.149,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 1,
+          "Position": 20,
+          "Driver": "PIA",
+          "LapTime": null,
+          "Sector1": null,
+          "Sector2": 47.944,
+          "Sector3": null,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": null,
+          "Interval": null,
+          "CumulativeTime": null
+        },
+        {
+          "LapNumber": 2,
+          "Position": 1,
+          "Driver": "ZHO",
+          "LapTime": 112.131,
+          "Sector1": 28.552,
+          "Sector2": 39.859,
+          "Sector3": 43.72,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": 0.0,
+          "Interval": null,
+          "CumulativeTime": 112.131
+        },
+        {
+          "LapNumber": 2,
+          "Position": 2,
+          "Driver": "BOT",
+          "LapTime": 116.358,
+          "Sector1": 25.896,
+          "Sector2": 38.937,
+          "Sector3": 51.525,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": 4.227,
+          "Interval": 4.227,
+          "CumulativeTime": 116.358
+        },
+        {
+          "LapNumber": 2,
+          "Position": 3,
+          "Driver": "SAR",
+          "LapTime": 121.235,
+          "Sector1": 26.633,
+          "Sector2": 39.728,
+          "Sector3": 54.874,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": 9.104,
+          "Interval": 4.877,
+          "CumulativeTime": 121.235
+        },
+        {
+          "LapNumber": 2,
+          "Position": 4,
+          "Driver": "ALO",
+          "LapTime": 124.571,
+          "Sector1": 27.874,
+          "Sector2": 40.625,
+          "Sector3": 56.072,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": 12.44,
+          "Interval": 3.336,
+          "CumulativeTime": 124.571
+        },
+        {
+          "LapNumber": 2,
+          "Position": 5,
+          "Driver": "RIC",
+          "LapTime": 130.108,
+          "Sector1": 27.153,
+          "Sector2": 42.359,
+          "Sector3": 60.596,
+          "Compound": null,
+          "TyreLife": null,
+          "GapToLeader": 17.977,
+          "Interval": 5.537,
+          "CumulativeTime": 130.108
         }
       ]
     }

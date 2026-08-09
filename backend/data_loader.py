@@ -127,6 +127,7 @@ def load_session_overview(
     date_start: str | None,
     driver: str | None = None,
     preview_rows: int = 25,
+    session_id: str | None = None,
 ) -> dict:
     drivers = _drivers_for_session(session_key)
     selected_code = None
@@ -141,6 +142,50 @@ def load_session_overview(
     laps_df = _build_laps_df(session_key, driver_number)
     telemetry_df = _telemetry_sample_df(session_key, driver_number, preview_rows)
 
+    datasets: dict = {
+        "results": {
+            "id": "results",
+            "title": "Session Result",
+            "description": f"Result row for {selected_driver} (OpenF1 session_result).",
+            "source": f"GET /v1/session_result?session_key={session_key}",
+            **dataframe_preview(driver_results, preview_rows),
+        },
+        "laps": {
+            "id": "laps",
+            "title": "Lap Times",
+            "description": f"Per-lap data for {selected_driver} from OpenF1 /v1/laps.",
+            "source": f"GET /v1/laps?session_key={session_key}&driver_number={driver_number}",
+            **dataframe_preview(laps_df, preview_rows),
+        },
+        "telemetry": {
+            "id": "telemetry",
+            "title": "Telemetry",
+            "description": (
+                f"Car + location samples for {selected_driver} "
+                "(OpenF1 car_data + location)."
+            ),
+            "source": (
+                f"GET /v1/car_data + /v1/location "
+                f"?session_key={session_key}&driver_number={driver_number}"
+            ),
+            **dataframe_preview(telemetry_df, preview_rows),
+        },
+    }
+
+    if session_type == "R" and session_id:
+        race_laps_df = _race_laps_preview_df(session_id, preview_rows)
+        if race_laps_df is not None:
+            datasets["raceLaps"] = {
+                "id": "raceLaps",
+                "title": "Race Laps (merged)",
+                "description": (
+                    "All drivers' lap data merged by lap number — one row per driver "
+                    "per lap with position, gaps, and sector times."
+                ),
+                "source": f"GET /api/race/simulation (built from /v1/laps?session_key={session_key})",
+                **dataframe_preview(race_laps_df, preview_rows),
+            }
+
     return {
         "session": {
             "year": year,
@@ -153,36 +198,19 @@ def load_session_overview(
         },
         "drivers": extract_drivers_from_list(drivers),
         "selectedDriver": selected_driver,
-        "datasets": {
-            "results": {
-                "id": "results",
-                "title": "Session Result",
-                "description": f"Result row for {selected_driver} (OpenF1 session_result).",
-                "source": f"GET /v1/session_result?session_key={session_key}",
-                **dataframe_preview(driver_results, preview_rows),
-            },
-            "laps": {
-                "id": "laps",
-                "title": "Lap Times",
-                "description": f"Per-lap data for {selected_driver} from OpenF1 /v1/laps.",
-                "source": f"GET /v1/laps?session_key={session_key}&driver_number={driver_number}",
-                **dataframe_preview(laps_df, preview_rows),
-            },
-            "telemetry": {
-                "id": "telemetry",
-                "title": "Telemetry",
-                "description": (
-                    f"Car + location samples for {selected_driver} "
-                    "(OpenF1 car_data + location)."
-                ),
-                "source": (
-                    f"GET /v1/car_data + /v1/location "
-                    f"?session_key={session_key}&driver_number={driver_number}"
-                ),
-                **dataframe_preview(telemetry_df, preview_rows),
-            },
-        },
+        "datasets": datasets,
     }
+
+
+def _race_laps_preview_df(session_id: str, preview_rows: int) -> pd.DataFrame | None:
+    try:
+        from race_simulation import load_race_simulation_by_session_id, race_simulation_to_dataframe
+
+        simulation = load_race_simulation_by_session_id(session_id)
+        df = race_simulation_to_dataframe(simulation)
+        return df if not df.empty else None
+    except Exception:
+        return None
 
 
 def load_overview_by_session_id(
@@ -203,6 +231,7 @@ def load_overview_by_session_id(
         date_start=entry.get("date_start"),
         driver=driver,
         preview_rows=preview_rows,
+        session_id=session_id,
     )
     overview["session"]["id"] = session_id
     return overview

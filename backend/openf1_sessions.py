@@ -35,7 +35,7 @@ def _session_type_code(session_name: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def list_sessions_catalog() -> list[dict]:
+def _list_sessions_catalog_cached() -> tuple[dict, ...]:
     """Build session dropdown from OpenF1 (2023-2024 race weekends)."""
     catalog: list[dict] = []
     for year in (2024, 2023):
@@ -50,21 +50,30 @@ def list_sessions_catalog() -> list[dict]:
             country = row.get("country_name") or row.get("location") or "Unknown"
             st = _session_type_code(name)
             session_key = row["session_key"]
+            circuit = row.get("circuit_short_name") or ""
             sid = f"{year}-{_slug(country)}-{st.lower()}"
             catalog.append(
                 {
                     "id": sid,
-                    "label": f"{year} · {country} · {name}",
+                    "label": f"{year} · {country} · {name}"
+                    + (f" ({circuit})" if circuit else ""),
                     "year": year,
                     "location": country,
                     "sessionType": st,
                     "session_key": session_key,
                     "session_name": name,
                     "date_start": row.get("date_start"),
-                    "circuit": row.get("circuit_short_name"),
+                    "circuit": circuit or row.get("circuit_short_name"),
                 }
             )
     catalog.sort(key=lambda s: (s["year"], s["location"], s["sessionType"]), reverse=True)
+    return tuple(catalog)
+
+
+def list_sessions_catalog() -> list[dict]:
+    catalog = list(_list_sessions_catalog_cached())
+    if not catalog:
+        _list_sessions_catalog_cached.cache_clear()
     return catalog
 
 

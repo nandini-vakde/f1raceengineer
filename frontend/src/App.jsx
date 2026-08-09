@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchOverview, fetchSessions, fetchPersonalities } from './api'
+import RaceLeaderboard from './RaceLeaderboard'
 import TelemetryReplay from './TelemetryReplay'
 import './App.css'
 import AIEngineerPanel from './AIEngineerPanel'
 
-const DATASETS = ['results', 'laps', 'telemetry']
+const DATASETS = ['results', 'laps', 'raceLaps', 'telemetry']
 const DEFAULT_SESSION_ID = '2024-monaco-r'
+
+const SESSION_GROUPS = [
+  { label: 'Races', types: ['R'] },
+  { label: 'Sprint', types: ['S'] },
+  { label: 'Qualifying', types: ['Q'] },
+]
 
 function DataTable({ dataset }) {
   if (!dataset?.columns?.length) {
@@ -112,9 +119,11 @@ function App() {
   }, [])
 
   const loadOverview = useCallback(
-    async ({ nextSessionId, nextDriver, keepDriver = true }) => {
-      setLoading(true)
-      setError(null)
+    async ({ nextSessionId, nextDriver, keepDriver = true, silent = false }) => {
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+      }
       try {
         const { data, source } = await fetchOverview({
           sessionId: nextSessionId,
@@ -124,14 +133,18 @@ function App() {
         setDrivers(data.drivers ?? [])
         setDriver(data.selectedDriver)
         setDataSource(source)
+        if (!data.datasets?.[activeDataset]) {
+          setActiveDataset('results')
+        }
       } catch (err) {
+        if (silent) return
         setError(err.message)
         setOverview(null)
       } finally {
-        setLoading(false)
+        if (!silent) setLoading(false)
       }
     },
-    [],
+    [activeDataset],
   )
 
   useEffect(() => {
@@ -151,10 +164,14 @@ function App() {
     setEngineerError(null)
     setEngineerStatus('STANDBY')
     setDriver(nextDriver)
+    const isRace =
+      overview?.session?.sessionType === 'R' ||
+      sessions.find((s) => s.id === sessionId)?.sessionType === 'R'
     loadOverview({
       nextSessionId: sessionId,
       nextDriver,
       keepDriver: true,
+      silent: isRace,
     })
   }
 
@@ -164,6 +181,9 @@ function App() {
 
   const dataset = overview?.datasets?.[activeDataset]
   const session = overview?.session
+  const isRaceSession =
+    session?.sessionType === 'R' ||
+    sessions.find((s) => s.id === sessionId)?.sessionType === 'R'
   const selectedDriverInfo = drivers.find((d) => d.code === driver)
 
   return (
@@ -174,8 +194,9 @@ function App() {
           <p className="eyebrow">F1 Race Engineer</p>
           <h1>Data Explorer</h1>
           <p className="subtitle">
-            Filter by session and driver, then replay telemetry as if the session
-            is happening live.
+            {isRaceSession
+              ? 'Watch the full-field race leaderboard lap by lap, or pick a driver for telemetry replay.'
+              : 'Filter by session and driver, then replay telemetry as if the session is happening live.'}
           </p>
         </div>
       </header>
@@ -184,24 +205,36 @@ function App() {
         <section className="filters-card" aria-label="Filters">
           <FilterSelect
             id="session-select"
-            label="Session / Race"
+            label="Race / Session"
             value={sessionId}
             onChange={handleSessionChange}
             disabled={loading && !sessions.length}
           >
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
+            {sessions.length === 0 ? (
+              <option value={sessionId}>Loading sessions…</option>
+            ) : (
+              SESSION_GROUPS.map((group) => {
+                const items = sessions.filter((s) => group.types.includes(s.sessionType))
+                if (!items.length) return null
+                return (
+                    <optgroup key={group.label} label={group.label}>
+                    {items.map((s) => (
+                      <option key={s.session_key ?? s.id} value={s.id}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )
+              })
+            )}
           </FilterSelect>
 
           <FilterSelect
             id="driver-select"
-            label="Driver"
+            label={isRaceSession ? 'Highlight driver' : 'Driver'}
             value={driver}
             onChange={handleDriverChange}
-            disabled={!drivers.length || loading}
+            disabled={!drivers.length || (loading && !overview)}
           >
             {drivers.map((d) => (
               <option key={d.code} value={d.code}>
@@ -244,7 +277,15 @@ function App() {
           </div>
         </section>
 
-        {driver && !loading && (
+        {overview && !loading && isRaceSession && (
+          <RaceLeaderboard
+            key={sessionId}
+            sessionId={sessionId}
+            highlightDriver={driver || undefined}
+          />
+        )}
+
+        {driver && overview && !loading && (
           <>
             <TelemetryReplay
               key={`${sessionId}-${driver}-${selectedPersonality}`}
@@ -265,7 +306,7 @@ function App() {
           </>
         )}
 
-        {loading && (
+        {loading && !overview && (
           <div className="status-card loading-card">
             <span className="spinner" aria-hidden="true" />
             <p>Loading session data… first run may take a minute while FastF1 caches.</p>
@@ -307,11 +348,14 @@ function App() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Driver</dt>
+                    <dt>{isRaceSession ? 'Highlight' : 'Driver'}</dt>
                     <dd>
+                      {isRaceSession && (
+                        <span className="muted-inline">Leaderboard row · </span>
+                      )}
                       {selectedDriverInfo
                         ? `${selectedDriverInfo.code} — ${selectedDriverInfo.name}`
-                        : driver}
+                        : driver || '—'}
                     </dd>
                   </div>
                   {session?.date && (
@@ -325,7 +369,7 @@ function App() {
             </section>
 
             <nav className="tabs" aria-label="Datasets">
-              {DATASETS.map((id) => {
+              {DATASETS.filter((id) => overview.datasets[id]).map((id) => {
                 const ds = overview.datasets[id]
                 return (
                   <button
@@ -373,7 +417,9 @@ function App() {
       </main>
 
       <footer className="footer">
-        <span>Filter by session and driver</span>
+        <span>
+          {isRaceSession ? 'Race simulation + driver telemetry' : 'Filter by session and driver'}
+        </span>
         <span>Data via OpenF1</span>
       </footer>
     </div>

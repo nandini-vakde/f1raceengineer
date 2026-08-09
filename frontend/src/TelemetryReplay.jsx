@@ -17,33 +17,100 @@ function formatRaceTime(seconds) {
   return `${String(m).padStart(2, '0')}:${sec}`
 }
 
+function lerp(a, b, t) {
+  if (a == null || b == null) return a ?? b ?? null
+  return a + (b - a) * t
+}
+
 function findPointAtTime(points, t) {
-  if (!points?.length) return null
-  if (t <= points[0].t) return points[0]
-  if (t >= points[points.length - 1].t) return points[points.length - 1]
+  if (!points?.length) return { point: null, index: -1 }
+
+  if (t <= points[0].t) return { point: points[0], index: 0 }
+  const last = points.length - 1
+  if (t >= points[last].t) return { point: points[last], index: last }
 
   let lo = 0
-  let hi = points.length - 1
+  let hi = last
   while (lo < hi) {
     const mid = Math.ceil((lo + hi) / 2)
     if (points[mid].t <= t) lo = mid
     else hi = mid - 1
   }
-  return points[lo]
+
+  const current = points[lo]
+  const next = points[lo + 1]
+  if (!next || next.t <= current.t) {
+    return { point: current, index: lo }
+  }
+
+  const frac = Math.min(1, Math.max(0, (t - current.t) / (next.t - current.t)))
+  const interpolated = {
+    ...current,
+    t,
+    speed: lerp(current.speed, next.speed, frac),
+    rpm: lerp(current.rpm, next.rpm, frac),
+    throttle: lerp(current.throttle, next.throttle, frac),
+    x: lerp(current.x, next.x, frac),
+    y: lerp(current.y, next.y, frac),
+    gear: frac < 0.5 ? current.gear : next.gear,
+    brake: frac < 0.5 ? current.brake : next.brake,
+    lap: frac < 0.5 ? current.lap : next.lap,
+  }
+  return { point: interpolated, index: lo }
 }
 
-function isInPit(points, idx, t) {
-  const next = points[idx + 1]
-  if (!next) return false
-  return next.t - t > 3.5
+function isInPit(point) {
+  if (!point) return false
+  return (point.speed ?? 0) < 3 && (point.throttle ?? 0) < 5
 }
 
-function TrackMap({ points, bounds, current }) {
+function collectTrail(points, endIdx, maxPoints = 80, maxGap = 2.5, maxJump = 500) {
+  const trail = []
+  for (let i = endIdx; i >= 0 && trail.length < maxPoints; i -= 1) {
+    const p = points[i]
+    if (p?.x == null || p?.y == null) break
+    if (trail.length > 0) {
+      const head = trail[0]
+      if (head.t - p.t > maxGap) break
+      const dist = Math.hypot(head.x - p.x, head.y - p.y)
+      if (dist > maxJump) break
+    }
+    trail.unshift(p)
+  }
+  return trail
+}
+
+function strokeSegments(ctx, pathPoints, toCanvas, maxJump = 500) {
+  if (!pathPoints.length) return
+  let prev = null
+  ctx.beginPath()
+  for (const p of pathPoints) {
+    const { cx, cy } = toCanvas(p.x, p.y)
+    if (prev) {
+      const dist = Math.hypot(p.x - prev.x, p.y - prev.y)
+      if (dist > maxJump) {
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(cx, cy)
+        prev = p
+        continue
+      }
+      ctx.lineTo(cx, cy)
+    } else {
+      ctx.moveTo(cx, cy)
+    }
+    prev = p
+  }
+  ctx.stroke()
+}
+
+function TrackMap({ points, trackOutline, bounds, current, currentIdx }) {
   const canvasRef = useRef(null)
+  const outline = trackOutline?.length ? trackOutline : points
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !bounds || !points?.length) return
+    if (!canvas || !bounds || !outline?.length) return
 
     const ctx = canvas.getContext('2d')
     const dpr = window.devicePixelRatio || 1
@@ -51,7 +118,7 @@ function TrackMap({ points, bounds, current }) {
     const h = canvas.clientHeight
     canvas.width = w * dpr
     canvas.height = h * dpr
-    ctx.scale(dpr, dpr)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     const pad = 16
     const rangeX = bounds.maxX - bounds.minX || 1
@@ -67,33 +134,20 @@ function TrackMap({ points, bounds, current }) {
     ctx.fillStyle = '#15151e'
     ctx.fillRect(0, 0, w, h)
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    points.forEach((p, i) => {
-      if (p.x == null || p.y == null) return
-      const { cx, cy } = toCanvas(p.x, p.y)
-      if (i === 0) ctx.moveTo(cx, cy)
-      else ctx.lineTo(cx, cy)
-    })
-    ctx.stroke()
-
-    const trail = []
-    const currentIdx = points.findIndex((p) => p === current)
-    const start = Math.max(0, currentIdx - 80)
-    for (let i = start; i <= currentIdx; i += 1) {
-      if (points[i]?.x != null) trail.push(points[i])
+    const outlinePoints = outline.filter((p) => p.x != null && p.y != null)
+    if (outlinePoints.length > 1) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+      ctx.lineWidth = 2.5
+      strokeSegments(ctx, outlinePoints, toCanvas)
     }
-    if (trail.length > 1) {
-      ctx.strokeStyle = '#e10600'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      trail.forEach((p, i) => {
-        const { cx, cy } = toCanvas(p.x, p.y)
-        if (i === 0) ctx.moveTo(cx, cy)
-        else ctx.lineTo(cx, cy)
-      })
-      ctx.stroke()
+
+    if (currentIdx >= 0) {
+      const trail = collectTrail(points, currentIdx)
+      if (trail.length > 1) {
+        ctx.strokeStyle = '#e10600'
+        ctx.lineWidth = 3
+        strokeSegments(ctx, trail, toCanvas, 350)
+      }
     }
 
     if (current?.x != null && current?.y != null) {
@@ -106,7 +160,7 @@ function TrackMap({ points, bounds, current }) {
       ctx.lineWidth = 2
       ctx.stroke()
     }
-  }, [points, bounds, current])
+  }, [points, outline, bounds, current, currentIdx])
 
   return (
     <canvas
@@ -128,6 +182,11 @@ function Metric({ label, value, unit }) {
       </span>
     </div>
   )
+}
+
+function formatMetric(value, digits = 0) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return digits > 0 ? value.toFixed(digits) : Math.round(value).toLocaleString()
 }
 
 export default function TelemetryReplay({
@@ -226,12 +285,10 @@ export default function TelemetryReplay({
     if (!onEngineerMessage || !replay?.points?.length || loading) return
 
     const points = replay.points
-    const current = findPointAtTime(points, playhead)
-    const currentIdx = current ? points.indexOf(current) : -1
-    const inPit =
-      current && currentIdx >= 0 && isInPit(points, currentIdx, playhead)
+    const { point: current, index: currentIdx } = findPointAtTime(points, playhead)
+    const inPitLane = isInPit(current)
 
-    if (inPit || currentIdx < 0) return
+    if (inPitLane || currentIdx < 0) return
 
     const now = Date.now()
     const idxChanged = currentIdx !== lastEngineerIdxRef.current
@@ -265,15 +322,15 @@ export default function TelemetryReplay({
     replay,
     sessionId,
     driver,
+    selectedPersonality,
     onEngineerMessage,
     onEngineerStatus,
     onEngineerError,
   ])
 
   const points = replay?.points ?? []
-  const current = findPointAtTime(points, playhead)
-  const currentIdx = current ? points.indexOf(current) : -1
-  const inPit = current && currentIdx >= 0 && isInPit(points, currentIdx, playhead)
+  const { point: current, index: currentIdx } = findPointAtTime(points, playhead)
+  const inPit = isInPit(current)
   const progress = replay ? (playhead / replay.totalSeconds) * 100 : 0
 
   const handleSeek = (e) => {
@@ -345,8 +402,10 @@ export default function TelemetryReplay({
           <div className="replay-layout">
             <TrackMap
               points={points}
+              trackOutline={replay.trackOutline}
               bounds={replay.bounds}
               current={current}
+              currentIdx={currentIdx}
             />
             <div className="replay-dash">
               <div className="replay-clock">
@@ -356,20 +415,20 @@ export default function TelemetryReplay({
               <div className="replay-metrics">
                 <Metric
                   label="Speed"
-                  value={inPit ? '—' : Math.round(current?.speed ?? 0)}
-                  unit="km/h"
+                  value={formatMetric(current?.speed)}
+                  unit={current?.speed != null ? 'km/h' : ''}
                 />
-                <Metric label="Gear" value={inPit ? 'P' : (current?.gear ?? '—')} />
+                <Metric
+                  label="Gear"
+                  value={inPit ? 'P' : (current?.gear ?? '—')}
+                />
                 <Metric
                   label="Throttle"
-                  value={inPit ? '—' : `${Math.round(current?.throttle ?? 0)}`}
-                  unit="%"
+                  value={formatMetric(current?.throttle)}
+                  unit={current?.throttle != null ? '%' : ''}
                 />
                 <Metric label="Brake" value={current?.brake ? 'ON' : 'OFF'} />
-                <Metric
-                  label="RPM"
-                  value={inPit ? '—' : Math.round(current?.rpm ?? 0).toLocaleString()}
-                />
+                <Metric label="RPM" value={formatMetric(current?.rpm)} />
                 <Metric
                   label="Lap"
                   value={
@@ -379,7 +438,7 @@ export default function TelemetryReplay({
                   }
                 />
               </div>
-              {inPit && <p className="replay-pit">Pit / stationary — no on-track telemetry</p>}
+              {inPit && <p className="replay-pit">Pit lane / stationary</p>}
             </div>
           </div>
 

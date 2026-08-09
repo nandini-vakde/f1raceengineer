@@ -722,6 +722,200 @@ button {
   opacity: 0.35;
 }
 
+.muted-inline {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* RACE LEADERBOARD */
+
+.leaderboard-panel {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  border-top: 4px solid var(--red);
+}
+
+.lb-lap-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--black);
+  color: var(--white);
+}
+
+.lb-lap-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lb-lap-value {
+  font-family: var(--mono);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.lb-lap-of {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.lb-lap-leader {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.lb-lap-leader-time {
+  font-family: var(--mono);
+}
+
+.lb-sector-progress {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.lb-sector-progress span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.lb-sector-progress span.active {
+  border-color: var(--red);
+  color: var(--white);
+  background: rgba(225, 6, 0, 0.25);
+}
+
+.lb-table-wrap {
+  overflow-x: auto;
+}
+
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.lb-table thead {
+  background: rgba(21, 21, 30, 0.04);
+  border-bottom: 1px solid var(--border);
+}
+
+.lb-table th {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lb-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.lb-row--focus {
+  background: rgba(225, 6, 0, 0.06);
+}
+
+.lb-pos {
+  width: 2.5rem;
+  font-weight: 800;
+  color: var(--text-h);
+}
+
+.lb-driver {
+  font-family: inherit;
+  min-width: 10rem;
+}
+
+.lb-code {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--text-h);
+  min-width: 2.5rem;
+}
+
+.lb-name {
+  display: none;
+  margin-left: 0.5rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (min-width: 700px) {
+  .lb-name {
+    display: inline;
+  }
+}
+
+.lb-tyre {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.tyre-soft {
+  background: #ff1e00;
+}
+
+.tyre-medium {
+  background: #ffd700;
+}
+
+.tyre-hard {
+  background: #f0f0f0;
+}
+
+.tyre-inter {
+  background: #43b02a;
+}
+
+.tyre-wet {
+  background: #0067ff;
+}
+
+.lb-gap {
+  color: var(--red);
+  font-weight: 600;
+  min-width: 5rem;
+}
+
+.lb-sector {
+  color: var(--muted);
+  min-width: 4rem;
+}
+
+.lb-laptime {
+  font-weight: 700;
+  color: var(--text-h);
+  min-width: 4.5rem;
+}
+
 /* AI ENGINEER PANEL */
 
 .engineer-panel {
